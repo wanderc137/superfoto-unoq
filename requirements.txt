@@ -1,0 +1,12 @@
+# superfoto-unoq NO requiere dependencias externas de Python.
+#
+# En la Arduino UNO Q (Debian 13 aarch64) se usan los paquetes del sistema:
+#   - Python 3.13 (stdlib: http.server, threading, json, pathlib, urllib...)
+#   - python3-opencv 4.10  (cv2)
+#   - python3-numpy 2.2
+#
+# En el host de desarrollo se usa el mismo codigo con cualquier venv que tenga
+# opencv-python y numpy (probado con cv2 5.0.0 / numpy 2.5.4).
+#
+# No instalar Flask, FastAPI, scipy, pillow ni skimage: el proyecto evita
+# dependencias externas a proposito (la placa no tiene pip utilizable).

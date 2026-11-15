@@ -1,0 +1,25 @@
+# Unidad de ejemplo. Instalarla requiere sudo (no disponible en la placa):
+#   sudo cp systemd/superfoto-unoq.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now superfoto-unoq
+[Unit]
+Description=SuperFoto UNO Q (superresolucion por fusion de frames)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=arduino
+Group=arduino
+WorkingDirectory=/home/arduino/superfoto-unoq
+ExecStart=/usr/bin/python3 /home/arduino/superfoto-unoq/app/server.py --host 0.0.0.0 --port 8010
+Restart=on-failure
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+Environment=SUPERFOTO_DATA_DIR=/home/arduino/superfoto-unoq/data
+# La placa tiene poca RAM: limitar el impacto si algo se descontrola.
+MemoryMax=1800M
+Nice=5
+
+[Install]
+WantedBy=multi-user.target

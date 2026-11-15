@@ -1,0 +1,62 @@
+# Datos y resultados
+data/
+data/sessions/
+data/previews/
+*.png
+*.jpg
+*.jpeg
+!docs/**/*.png
+!docs/**/*.jpg
+*.mp4
+*.avi
+*.mov
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+*.egg-info/
+
+# Resultados de pruebas reales
+capturas/
+resultados_real/
+
+# Arduino / builds
+build/
+*.elf
+*.hex
+*.bin
+.arduino/
+
+# Sistema
+.DS_Store
+*.log
+*.pid
+*.tmp
+
+# Pipeline
+PLAN.md
+AUDIT_REPORT.md
+# ── Portfolio Studio: seguridad y artefactos ─────────────────────────
+.env
+.env.*
+!.env.example
+node_modules/
+.next/
+dist/
+target/
+obj/
+.idea/
+.vscode/
+*.pem
+*.key
+*.jks
+*.keystore
+secrets.h
+google-services.json
+local.properties
+test-wallet.json
+wallet.json
+configuration.yaml

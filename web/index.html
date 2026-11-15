@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SuperFoto · Arduino UNO Q</title>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo" aria-hidden="true"></span>
+      <div>
+        <h1>SuperFoto <span class="tag">UNO Q</span></h1>
+        <p class="sub">Superresolucion por fusion de frames · maximo detalle real, no interpolacion</p>
+      </div>
+    </div>
+    <div class="statusbox">
+      <span id="statePill" class="pill idle">inactivo</span>
+      <span id="serviceInfo" class="mono small"></span>
+    </div>
+  </header>
+
+  <main class="grid">
+    <!-- ------------------------- Panel de control ------------------------- -->
+    <section class="panel" id="controls">
+      <h2>Captura</h2>
+
+      <label class="field">
+        <span>Fuente</span>
+        <select id="source">
+          <option value="auto">Automatica (busca IP Webcam)</option>
+          <option value="ip">IP Webcam (telefono WiFi)</option>
+          <option value="file">Archivo de video</option>
+          <option value="folder">Carpeta de imagenes</option>
+          <option value="webcam">Camara USB local</option>
+          <option value="synthetic">Demo sintetica</option>
+        </select>
+      </label>
+
+      <!-- Conexion IP Webcam: el dato que el usuario cambia mas seguido. -->
+      <div class="ipBlock" id="urlField">
+        <label class="field tight" for="url">
+          <span>IP o URL del teléfono</span>
+          <input id="url" type="text" placeholder="192.168.1.23:8080" autocomplete="off"
+                 spellcheck="false" inputmode="url" autocapitalize="off">
+        </label>
+        <p class="hint" id="urlHelp">
+          Ej: <code>192.168.1.23</code> · <code>192.168.1.23:8080</code> ·
+          <code>http://192.168.1.23:8080/video</code>
+        </p>
+        <div class="row tight">
+          <button id="probeBtn" class="ghost" type="button">Probar conexión</button>
+          <button id="discoverBtn" class="ghost" type="button">Buscar cámara</button>
+          <span id="probeInfo" class="small muted" role="status" aria-live="polite"></span>
+        </div>
+        <p class="hint" id="autoHint">
+          Opcional: si sabés la IP, escribila; si no, se busca automáticamente.
+        </p>
+      </div>
+
+      <div class="field hidden" id="pathField">
+        <span>Ruta en la placa</span>
+        <input id="path" type="text" placeholder="/home/arduino/videos/hoja.mp4" autocomplete="off">
+      </div>
+
+      <div class="field hidden" id="indexField">
+        <span>Indice de camara</span>
+        <input id="index" type="number" min="0" max="16" value="0">
+      </div>
+
+      <h2>Parametros</h2>
+
+      <label class="field">
+        <span>Escala objetivo <b id="scaleVal">1.5</b>x</span>
+        <input id="scale" type="range" min="1" max="2" step="0.1" value="1.5">
+      </label>
+
+      <label class="field">
+        <span>Nitidez minima (percentil) <b id="qualityVal">60</b></span>
+        <input id="quality" type="range" min="0" max="95" step="5" value="60">
+      </label>
+
+      <label class="field">
+        <span>PSF optica (sigma) <b id="psfVal">0.6</b></span>
+        <input id="psf" type="range" min="0.3" max="2" step="0.1" value="0.6">
+      </label>
+
+      <label class="field">
+        <span>Iteraciones RL <b id="rlVal">15</b></span>
+        <input id="rl" type="range" min="0" max="30" step="5" value="15">
+      </label>
+
+      <div class="row two">
+        <label class="field">
+          <span>Duracion (s)</span>
+          <input id="duration" type="number" min="0" max="3600" step="10" value="10">
+        </label>
+        <label class="field">
+          <span>Frames objetivo</span>
+          <input id="frames" type="number" min="8" max="5000" step="20" value="80">
+        </label>
+      </div>
+      <p class="hint">Se detiene al cumplirse cualquiera de los dos, o al pulsar Detener.</p>
+
+      <div class="presets">
+        <button id="presetReal" class="ghost" type="button">Prueba real (300 s)</button>
+        <button id="presetDemo" class="ghost" type="button">Demo rapida</button>
+      </div>
+
+      <div class="row actions">
+        <button id="startBtn" class="primary" type="button">Iniciar</button>
+        <button id="stopBtn" class="danger" type="button" disabled>Detener</button>
+      </div>
+      <p id="actionMsg" class="small"></p>
+    </section>
+
+    <!-- ------------------------- Visor ------------------------- -->
+    <section class="panel viewerPanel">
+      <div class="tabs">
+        <button class="tab active" data-tab="result" type="button">Resultado</button>
+        <button class="tab" data-tab="preview" type="button">Preview en vivo</button>
+        <a id="downloadLink" class="tab link hidden" href="#" download>Descargar PNG</a>
+      </div>
+
+      <div id="tab-result" class="tabBody">
+        <div class="viewerToolbar">
+          <button id="zoomOut" class="ghost" type="button">−</button>
+          <span id="zoomLabel" class="mono small">100%</span>
+          <button id="zoomIn" class="ghost" type="button">+</button>
+          <button id="zoomFit" class="ghost" type="button">Ajustar</button>
+          <button id="zoom100" class="ghost" type="button">1:1</button>
+          <span class="sep"></span>
+          <button id="cropBtn" class="ghost" type="button">Recorte 1:1 visible</button>
+          <button id="crop4Btn" class="ghost" type="button">Recorte central 4x</button>
+          <span id="viewerInfo" class="small muted"></span>
+        </div>
+        <div id="viewerStage" class="stage">
+          <canvas id="viewer"></canvas>
+          <div id="viewerEmpty" class="stageEmpty">
+            <p>Aun no hay resultado.</p>
+            <p class="small muted">Inicia una sesion para fusionar frames. Si la camara esta apagada,
+              elegi <b>Demo sintetica</b> o <b>Archivo de video</b>.</p>
+          </div>
+        </div>
+        <p class="hint">
+          El zoom es <b>digital</b> sobre la imagen fusionada. El detalle extra proviene de la fusion
+          de muchos frames alineados a nivel subpixel (y de la deconvolucion de la PSF), no del zoom.
+          Ganancia realista: hasta ~2x lineal (4x pixeles) sobre la fuente.
+        </p>
+      </div>
+
+      <div id="tab-preview" class="tabBody hidden">
+        <div class="stage previewStage">
+          <img id="previewImg" alt="Preview del ultimo frame aceptado">
+        </div>
+        <p class="hint">Ultimo frame aceptado por el gate de calidad (se actualiza durante la captura).</p>
+      </div>
+    </section>
+
+    <!-- ------------------------- Progreso e historial ------------------------- -->
+    <section class="panel">
+      <h2>Progreso</h2>
+      <div class="progressBlock">
+        <div class="progressHead">
+          <span id="progressLabel">sin sesion</span>
+          <span id="progressPct" class="mono">0%</span>
+        </div>
+        <div class="bar"><div id="progressBar" class="fill"></div></div>
+      </div>
+
+      <dl class="stats">
+        <div><dt>Vistos</dt><dd id="statSeen">0</dd></div>
+        <div><dt>Aceptados</dt><dd id="statAccepted">0</dd></div>
+        <div><dt>Rechazados</dt><dd id="statRejected">0</dd></div>
+        <div><dt>Alin. invalida</dt><dd id="statAlign">0</dd></div>
+        <div><dt>Tiempo</dt><dd id="statElapsed">0 s</dd></div>
+        <div><dt>Salida</dt><dd id="statOutput">—</dd></div>
+        <div><dt>Umbral nitidez</dt><dd id="statThreshold">—</dd></div>
+        <div><dt>Cobertura</dt><dd id="statCoverage">—</dd></div>
+      </dl>
+
+      <h2>Actividad</h2>
+      <pre id="log" class="log" aria-live="polite"></pre>
+
+      <h2>Historial</h2>
+      <div id="history" class="history"><p class="small muted">Sin sesiones guardadas.</p></div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <span id="footDisk" class="small muted"></span>
+    <span class="small muted">superfoto-unoq · puerto 8010 · servicio detector-tarjetas intacto en 8000</span>
+  </footer>
+
+  <script src="/app.js"></script>
+</body>
+</html>

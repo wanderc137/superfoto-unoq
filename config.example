@@ -1,0 +1,31 @@
+{
+  "host": "0.0.0.0",
+  "port": 8010,
+  "data_dir": "/home/arduino/superfoto-unoq/data",
+  "sessions_keep": 3,
+  "min_free_mb": 500,
+
+  "source": "auto",
+  "source_url": "",
+  "source_path": "",
+
+  "default_scale": 1.5,
+  "max_output_pixels": 32000000,
+  "quality_percentile": 60,
+  "psf_sigma": 0.6,
+  "rl_iterations": 15,
+  "refine_iterations": 8,
+  "target_frames": 80,
+  "duration_s": 10,
+
+  "align_scale": 0.5,
+  "max_shift_pixels": 32,
+  "min_correlation": 0.35,
+  "use_ecc": true,
+
+  "discover_subnet": "192.168.1",
+  "discover_ports": [8080, 8081],
+  "discover_timeout": 0.8,
+
+  "log_level": "INFO"
+}
