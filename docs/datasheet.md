@@ -69,6 +69,7 @@ instalar dependencias de Python: usa la stdlib, OpenCV y NumPy del sistema.
 | Servidor HTTP | `http.server.ThreadingHTTPServer` |
 | Dependencias externas | **Ninguna** (sin Flask, FastAPI, scipy, Pillow, scikit-image) |
 | Navegador | Chrome, Firefox o Edge modernos |
+| Suite de pruebas | 105 tests (`python3 -m pytest -q`) |
 
 ### 2.3 Fuentes de imagen
 
@@ -169,15 +170,22 @@ SSH_KEY=~/.ssh/unoq_key
 SUPERFOTO_PORT=8010
 ```
 
-### 4.2 Instalación manual
+### 4.2 Operación en la placa con `scripts/servicio.sh`
+
+El despliegue deja el servidor corriendo. Para operarlo sin `sudo`:
 
 ```bash
 ssh -p 2222 arduino@<IP_DE_LA_UNO_Q>
 cd ~/superfoto-unoq
-python3 app/server.py --host 0.0.0.0 --port 8010
+
+scripts/servicio.sh status       # estado, PID, URL y health
+scripts/servicio.sh start        # idempotente; adopta el proceso del deploy
+scripts/servicio.sh stop         # TERM y, si hace falta, KILL
+scripts/servicio.sh restart
+scripts/servicio.sh logs 50
 ```
 
-Comprobación:
+La UI queda en `http://<IP_DE_LA_UNO_Q>:8010/`. Comprobación directa:
 
 ```bash
 curl -s http://<IP_DE_LA_UNO_Q>:8010/api/health
@@ -199,11 +207,41 @@ Respuesta esperada (resumida):
 }
 ```
 
-### 4.3 Arranque automático (opcional)
+El script valida el PID contra `/proc/<pid>/cmdline`, usa un lock para evitar
+operaciones simultáneas, no mata procesos ajenos y nunca toca el puerto 8000.
+La referencia completa está en [`servicio.md`](servicio.md).
+
+Si el script no estuviera disponible, el arranque manual de emergencia es:
+
+```bash
+python3 app/server.py --host 0.0.0.0 --port 8010
+```
+
+### 4.3 Arranque automático con cron (sin sudo)
+
+```bash
+scripts/servicio.sh boot-enable
+scripts/servicio.sh boot-status
+scripts/servicio.sh boot-disable
+```
+
+`boot-enable` agrega una única línea `@reboot` al crontab del usuario
+`arduino`; es idempotente. No requiere `sudo` ni systemd, pero **cron debe
+estar activo**:
+
+```bash
+systemctl is-active cron
+# active
+```
+
+Si cron no corre, la línea existe pero no se ejecuta. `boot-status` devuelve
+`0` cuando está habilitado y `1` cuando no. Para un puerto distinto, editá la
+línea del crontab y agregá `SUPERFOTO_PORT=8011` antes del script.
+
+### 4.4 Alternativa systemd (requiere sudo)
 
 La unidad [`../systemd/superfoto-unoq.service`](../systemd/superfoto-unoq.service)
-es un ejemplo. Requiere `sudo` para instalarla; el proyecto no lo hace por
-diseño.
+es un ejemplo. Instalarla requiere `sudo`, que el proyecto evita por diseño:
 
 ```bash
 sudo cp systemd/superfoto-unoq.service /etc/systemd/system/
@@ -211,7 +249,9 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now superfoto-unoq
 ```
 
-### 4.4 Desarrollo local
+No mezcles systemd con `servicio.sh` sobre el mismo puerto.
+
+### 4.5 Desarrollo local
 
 ```bash
 scripts/run_local.sh synthetic
@@ -237,7 +277,7 @@ La pantalla tiene tres zonas:
 3. **Resultado / Preview:** visor con zoom y pan, descargas, progreso y log de
    actividad.
 
-El campo de IP acepta `192.0.2.10`, `192.0.2.10:8080` o la URL completa; el
+El campo de IP acepta `<IP_DEL_TELEFONO>`, `<IP_DEL_TELEFONO>:8080` o la URL completa; el
 servidor la normaliza (esquema `http://` y puerto `8080` si faltan) y
 **Probar conexión** confirma con la resolución real (`Conectado: 1280x720`). La
 última IP se recuerda en el navegador. Funciona con cualquier teléfono, sin
@@ -320,7 +360,7 @@ Ejemplo mínimo:
 
 ```bash
 # Probar el telefono antes de capturar
-curl -s 'http://<IP_DE_LA_UNO_Q>:8010/api/probe?url=192.0.2.10:8080'
+curl -s 'http://<IP_DE_LA_UNO_Q>:8010/api/probe?url=<IP_DEL_TELEFONO>:8080'
 
 curl -s -X POST http://<IP_DE_LA_UNO_Q>:8010/api/session/start \
   -H 'Content-Type: application/json' \
@@ -351,6 +391,9 @@ No borres `data/server.log` mientras el servicio corre (podés truncarlo).
 ### 7.2 Logs
 
 - En la placa: `data/server.log`.
+- Lectura rápida: `scripts/servicio.sh logs 100` (o `logs 500`).
+- Seguimiento en vivo: `tail -f data/server.log`.
+- Rotación: al superar **5 MB**, el script lo renombra a `data/server.log.1`.
 - En arranque manual: stderr de la terminal.
 - Niveles: `DEBUG`, `INFO`, `WARNING`, `ERROR` (`--log-level` o
   `SUPERFOTO_LOG_LEVEL`).
@@ -361,7 +404,15 @@ No borres `data/server.log` mientras el servicio corre (podés truncarlo).
 REMOTE_HOST=<IP_DE_LA_UNO_Q> scripts/deploy_unoq.sh
 ```
 
-El despliegue preserva `data/sessions`, `data/previews` y `data/videos`.
+El despliegue detiene el servicio, copia el código, lo reinicia y verifica
+`/api/health`; preserva `data/sessions`, `data/previews` y `data/videos`.
+Si usaste `--no-restart`, completá el reinicio en la placa:
+
+```bash
+ssh -p 2222 arduino@<IP_DE_LA_UNO_Q>
+cd ~/superfoto-unoq
+scripts/servicio.sh restart
+```
 
 ### 7.4 Respaldo
 

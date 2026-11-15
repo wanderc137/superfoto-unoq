@@ -25,6 +25,7 @@ deconvolución. Hasta dónde llega, y por qué, está documentado en
 - [Resultados medidos](#resultados-medidos)
 - [Comparativa visual real](#comparativa-visual-real)
 - [Instalación y despliegue](#instalación-y-despliegue)
+- [Servicio: iniciar, detener y arranque automático](#servicio-iniciar-detener-y-arranque-automático)
 - [Forma de operar](#forma-de-operar)
 - [API HTTP](#api-http)
 - [CLI](#cli)
@@ -391,27 +392,53 @@ scripts/deploy_unoq.sh --stop         # detiene el servicio remoto
 scripts/deploy_unoq.sh --via-adb      # fallback por ADB si no hay SSH
 ```
 
-### Arranque manual en la placa
+### Servicio: iniciar, detener y arranque automático
+
+`scripts/servicio.sh` es la forma recomendada de operar el servidor en la
+placa: **no usa `sudo`**, no toca systemd y nunca toca el puerto 8000
+(reservado a `detector-tarjetas`). `deploy_unoq.sh` ya deja el servicio
+corriendo; a partir de ahí:
 
 ```bash
 ssh -p 2222 arduino@<IP_DE_LA_UNO_Q>
 cd ~/superfoto-unoq
-python3 app/server.py --host 0.0.0.0 --port 8010
+
+scripts/servicio.sh status       # estado, PID, URL y /api/health
+scripts/servicio.sh start        # arranca en segundo plano (idempotente)
+scripts/servicio.sh stop         # detiene sin matar procesos ajenos
+scripts/servicio.sh restart      # stop + start
+scripts/servicio.sh logs 50      # últimas 50 líneas de data/server.log
 ```
 
-La UI queda en `http://<IP_DE_LA_UNO_Q>:8010/`.
+El script valida el PID contra `/proc/<pid>/cmdline`, evita instancias
+duplicadas con `flock`, adopta el proceso que dejó `deploy_unoq.sh` y rota
+`data/server.log` al superar 5 MB. La UI queda en
+`http://<IP_DE_LA_UNO_Q>:8010/`.
 
-### Arranque automático (opcional, requiere sudo)
+Para que arranque solo después de cada reinicio de la placa, sin privilegios:
 
-La unidad [`systemd/superfoto-unoq.service`](systemd/superfoto-unoq.service) es
-un **ejemplo**. Instalarla implica `sudo`, que este proyecto evita por diseño.
-Si tenés acceso administrativo:
+```bash
+scripts/servicio.sh boot-enable    # agrega @reboot al crontab del usuario
+scripts/servicio.sh boot-status    # comprueba si está habilitado
+scripts/servicio.sh boot-disable   # lo quita
+```
+
+`boot-enable` es idempotente y usa **cron @reboot** (requiere que el servicio
+`cron` esté activo). Es la alternativa sin `sudo` al arranque automático.
+
+La unidad [`systemd/superfoto-unoq.service`](systemd/superfoto-unoq.service)
+sigue disponible como **alternativa avanzada**, pero instalarla requiere
+`sudo`:
 
 ```bash
 sudo cp systemd/superfoto-unoq.service /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable --now superfoto-unoq
 ```
+
+No mezcles systemd y `servicio.sh` sobre el mismo puerto. La guía completa
+—arquitectura, variables, códigos de salida, cron, verificación real en la
+UNO Q y troubleshooting— está en [`docs/servicio.md`](docs/servicio.md).
 
 ### Desarrollo local
 
@@ -441,18 +468,18 @@ La IP/URL se escribe **en la página**, antes de capturar: sirve cualquier
 teléfono Android con IP Webcam, no hace falta reconfigurar el servidor.
 
 1. En el teléfono: instalá **IP Webcam**, abrí la app y pulsá **Start server**.
-   La app muestra una dirección como `192.0.2.10:8080`.
+   La app muestra una dirección como `<IP_DEL_TELEFONO>:8080`.
 2. En la UI de la UNO Q, arriba del selector de fuente está el bloque
    **Conexión IP Webcam → “IP o URL del teléfono”**.
-3. Escribí la IP tal como la ves (`192.0.2.10`, `192.0.2.10:8080`) o la URL
+3. Escribí la IP tal como la ves (`<IP_DEL_TELEFONO>`, `<IP_DEL_TELEFONO>:8080`) o la URL
    completa. Cualquiera de estas formas es válida:
 
    ```text
-   192.0.2.10
-   192.0.2.10:8080
-   http://192.0.2.10:8080
-   http://192.0.2.10:8080/video
-   https://192.0.2.10:8080/video
+   <IP_DEL_TELEFONO>
+   <IP_DEL_TELEFONO>:8080
+   http://<IP_DEL_TELEFONO>:8080
+   http://<IP_DEL_TELEFONO>:8080/video
+   https://<IP_DEL_TELEFONO>:8080/video
    ```
 
    Si falta el esquema se usa `http://`; si falta el puerto, `8080`; un
@@ -542,7 +569,7 @@ Ejemplo:
 curl -s http://<IP_DE_LA_UNO_Q>:8010/api/health | python3 -m json.tool
 
 # Probar cualquier telefono antes de capturar (acepta IP corta o URL)
-curl -s 'http://<IP_DE_LA_UNO_Q>:8010/api/probe?url=192.0.2.10:8080' | python3 -m json.tool
+curl -s 'http://<IP_DE_LA_UNO_Q>:8010/api/probe?url=<IP_DEL_TELEFONO>:8080' | python3 -m json.tool
 
 curl -s -X POST http://<IP_DE_LA_UNO_Q>:8010/api/session/start \
   -H 'Content-Type: application/json' \
@@ -704,7 +731,7 @@ list` no muestra la placa:
 | El resultado se ve igual al original | Escala 1.0, pocos frames o escena sin diversidad | Usá escala 1.5–2.0, capturá más frames, verificá el shift medio |
 | El resultado tiene halos o ruido | RL demasiado agresivo | Bajá iteraciones RL o subí `psf_sigma` |
 | "Disco lleno" o error de espacio | Menos de 500 MB libres | El sistema purga sesiones viejas; borrá manualmente `data/sessions/` si hace falta |
-| El servicio no responde en 8010 | Proceso caído o puerto ocupado | `curl /api/health`, revisá `data/server.log`, reiniciá con `deploy_unoq.sh` |
+| El servicio no responde en 8010 | Proceso caído o puerto ocupado | `scripts/servicio.sh status`, `scripts/servicio.sh logs 100`, `scripts/servicio.sh restart` |
 | `arduino-cli upload` falla | ADB no ve la placa o falta udev | `adb devices`, cable de datos, regla udev `2341:0078`; la app Linux no depende del sketch |
 | `detector-tarjetas` dejó de andar | Alguien tocó el puerto 8000 | Este proyecto no lo hace; revisá el otro servicio. `deploy_unoq.sh` rechaza el 8000 explícitamente |
 
@@ -722,13 +749,16 @@ python3 scripts/benchmark_sr.py --quick
 python3 scripts/benchmark_sr.py --json resultados.json
 ```
 
-La suite cubre 59 funciones de prueba: parser MJPEG fragmentado, reconexión,
-fuentes sintéticas con ground truth, gate de calidad (incluido acceso
-concurrente), alineación con shifts conocidos, rechazo de frames sin textura,
-fusión y saturación del contador uint16, presupuesto de memoria, storage
-atómico y allowlist de rutas, API (incluida ausencia de rutas absolutas),
-CLI, sketch (solo `Arduino_LED_Matrix`, cuatro estados) y UI sin `innerHTML`
-dinámico ni recursos externos.
+La suite cubre **105 funciones de prueba**: parser MJPEG fragmentado,
+reconexión, fuentes sintéticas con ground truth, gate de calidad (incluido
+acceso concurrente), alineación con shifts conocidos, rechazo de frames sin
+textura, fusión y saturación del contador uint16, presupuesto de memoria,
+storage atómico y allowlist de rutas, API (incluida ausencia de rutas
+absolutas), CLI, sketch (solo `Arduino_LED_Matrix`, cuatro estados) y UI
+sin `innerHTML` dinámico ni recursos externos. También incluye
+`tests/test_service_script.py`, con 6 pruebas del script de servicio
+(existencia/ejecutable, `bash -n`, comandos y guardas, `help`, `status` con
+directorio temporal y prohibición del puerto 8000).
 
 El benchmark sintético exige **+1.5 dB de PSNR y mejor SSIM** que el bicúbico.
 El resultado actual (+6.47 dB) deja margen para refactors sin romper la
@@ -754,13 +784,14 @@ superfoto-unoq/
 ├── sketch/superfoto_mcu/  # sketch Zephyr para la matriz LED 13×8
 ├── scripts/
 │   ├── deploy_unoq.sh      # despliegue SSH sin sudo
+│   ├── servicio.sh         # start/stop/status/logs + arranque por cron
 │   ├── prueba_real_unoq.sh # procesa un video en la placa
 │   ├── process_video.py    # CLI de procesamiento
 │   ├── benchmark_sr.py     # benchmark con ground truth
 │   ├── captura_real.py     # grabador host (webcam/IP)
 │   └── run_local.sh        # arranque local
-├── tests/             # 59 funciones de prueba
-├── docs/              # datasheet, developer, límites, imágenes
+├── tests/             # 105 funciones de prueba
+├── docs/              # datasheet, developer, servicio, límites, imágenes
 ├── systemd/           # unidad de ejemplo (requiere sudo)
 ├── config.example     # configuración comentada
 ├── requirements.txt   # sin dependencias externas

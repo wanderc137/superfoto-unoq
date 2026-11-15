@@ -51,8 +51,8 @@ web/
 ├── style.css     # Estética sobria
 └── favicon.svg
 sketch/superfoto_mcu/superfoto_mcu.ino
-scripts/          # deploy, prueba real, CLI, benchmark, captura, run_local
-tests/            # 59 funciones de prueba
+scripts/          # deploy, servicio.sh, prueba real, CLI, benchmark, captura, run_local
+tests/            # 105 funciones de prueba
 ```
 
 ### Mapa de dependencias
@@ -195,10 +195,10 @@ Canoniza la IP/URL de **cualquier** teléfono a `http(s)://host:puerto/video`:
 
 | Entrada | Salida |
 |---|---|
-| `192.0.2.10` | `http://192.0.2.10:8080/video` |
-| `192.0.2.10:8080` | `http://192.0.2.10:8080/video` |
-| `http://192.0.2.10:8080` | `http://192.0.2.10:8080/video` |
-| `http://192.0.2.10:8080/photo.jpg` | `http://192.0.2.10:8080/video` |
+| `<IP_DEL_TELEFONO>` | `http://<IP_DEL_TELEFONO>:8080/video` |
+| `<IP_DEL_TELEFONO>:8080` | `http://<IP_DEL_TELEFONO>:8080/video` |
+| `http://<IP_DEL_TELEFONO>:8080` | `http://<IP_DEL_TELEFONO>:8080/video` |
+| `http://<IP_DEL_TELEFONO>:8080/photo.jpg` | `http://<IP_DEL_TELEFONO>:8080/video` |
 | `https://cam.example/video` | `https://cam.example:8080/video` |
 | `http://host:8080/cam/video` | se conserva `/cam/video` |
 
@@ -587,6 +587,52 @@ rueda con factor 1.18, botones Ajustar/1:1. Descargas por
 - `delay(33)` → ~30 fps.
 - RAM ~650 B, flash ~2.9 KB.
 
+### 4.12 `scripts/servicio.sh`
+
+Envoltorio de ciclo de vida del servidor Linux. No es parte de la app: es la
+capa operativa que permite arrancar, parar y consultar el proceso sin `sudo`.
+La guía de usuario completa está en [`servicio.md`](servicio.md).
+
+**Comandos:** `start`, `stop`, `restart`, `status`, `logs [N]`,
+`boot-enable`, `boot-disable`, `boot-status`, `help`. Comando desconocido →
+ayuda y código `2`.
+
+**Variables:** `SUPERFOTO_PORT` (8010), `SUPERFOTO_HOST` (0.0.0.0),
+`SUPERFOTO_DATA_DIR` (`<proyecto>/data`), `PYTHON` (`python3`). El puerto 8000
+está prohibido por convivencia con `detector-tarjetas`.
+
+**Estado:**
+
+| Archivo | Rol |
+|---|---|
+| `data/superfoto.pid` | PID del servidor |
+| `data/server.log` | stdout/stderr, append, rotado a 5 MB |
+| `data/servicio.lock` | `flock` para excluir `start`/`stop` simultáneos |
+
+**Ciclo de vida:**
+
+1. `start` toma el lock; si el PID file es válido, no hace nada.
+2. Si el puerto está ocupado, busca el proceso con `pgrep -f app/server.py`.
+   Si es del proyecto, lo **adopta** escribiendo el PID file (caso típico:
+   servidor dejado por `deploy_unoq.sh`). Si es ajeno, aborta sin matarlo.
+3. Verifica intérprete, `app/server.py` e import de `cv2`/`numpy`.
+4. Lanza con `nohup ... 9>&- &` y guarda `$!`.
+5. Hace health check HTTP a `127.0.0.1:<puerto>/api/health` durante 10 s.
+
+El detalle `9>&-` es crítico: cierra en el hijo el descriptor del `flock`. Sin
+eso el servidor retiene el lock mientras vive y `stop`/`restart` fallan con
+“otra operacion de servicio esta en curso”. Corregido y verificado en la placa.
+
+`stop` valida el PID leyendo `/proc/<pid>/cmdline` (debe contener
+`app/server.py`) antes de enviar `TERM`; espera 10 s y recién entonces usa
+`KILL`. `status` devuelve `0` si corre y `3` si está detenido. `boot-enable`
+instala una línea `@reboot` idempotente en el crontab del usuario; no toca
+systemd ni requiere privilegios.
+
+**Pruebas:** [`tests/test_service_script.py`](../tests/test_service_script.py)
+cubre existencia/ejecutable, `bash -n`, comandos y guardas, `help`, `status`
+con directorio temporal y la prohibición del 8000 (6 tests; suite total 105).
+
 ---
 
 ## 5. Formato de `session.json`
@@ -682,8 +728,9 @@ Notas:
 
 ## 6. Pruebas
 
-La suite tiene **59 funciones de prueba** y no requiere hardware: usa fuentes
-sintéticas, videos temporales y un servidor en un puerto efímero.
+La suite tiene **105 funciones de prueba** y no requiere hardware: usa fuentes
+sintéticas, videos temporales y un servidor en un puerto efímero. Incluye 6
+pruebas estáticas/de humo del script de servicio.
 
 ```bash
 python3 -m pytest -q
@@ -701,6 +748,7 @@ python3 -m pytest -q
 | `test_process_video_cli.py` | Rechazo de negativos, cero y defaults |
 | `test_web_static.py` | Sin `innerHTML` dinámico, sin recursos externos, assets locales |
 | `test_sketch_source.py` | Solo `Arduino_LED_Matrix`, cuatro estados |
+| `test_service_script.py` | `servicio.sh`: ejecutable, `bash -n`, comandos/guardas, `help`, `status` temporal, puerto 8000 |
 
 ### Benchmark
 
@@ -734,7 +782,8 @@ Resultado actual: +6.47 dB (24.34 → 30.81), SSIM 0.9214 → 0.9497.
 | Escritura atómica | Escritura directa | Nunca dejar sesiones a medias |
 | uint16 saturante | uint32 | Mitad de memoria; 65535 muestras sobran |
 | Puerto 8010 | 8000 | Convivencia con `detector-tarjetas` |
-| Sin sudo | systemd automático | No hay contraseña en la placa |
+| `servicio.sh` + cron del usuario | systemd automático | No hay contraseña ni `sudo` en la placa |
+| Lock con `flock` + PID validado | Solo PID file | Evita carreras y no mata procesos ajenos |
 | Aviso de escena en movimiento | Fallar la sesión | Se conserva el segmento estable |
 | Sin rutas absolutas en la API | Devolver paths | Privacidad y portabilidad |
 | Zoom 8× digital explícito | Vender "8× óptico" | Honestidad técnica |
@@ -849,9 +898,10 @@ Resultado actual: +6.47 dB (24.34 → 30.81), SSIM 0.9214 → 0.9497.
 
 | Qué mirar | Dónde |
 |---|---|
+| Estado del proceso | `scripts/servicio.sh status` |
 | Estado y contadores | `GET /api/status` |
 | Disco y versiones | `GET /api/health` |
-| Log del servicio | `data/server.log` |
+| Log del servicio | `scripts/servicio.sh logs 100` o `data/server.log` |
 | Sesiones guardadas | `data/sessions/<id>/session.json` |
 | Cámara detectada | `GET /api/sources`, `python3 -c` con `list_video_devices()` |
 | Shift y cobertura | `metrics.shift_mean_px`, `metrics.coverage` |

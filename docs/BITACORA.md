@@ -212,6 +212,57 @@ copiado; nunca toca archivos locales. Quedó como I-006.
 
 Ninguno de estos fixes cambió el algoritmo; todos endurecieron bordes.
 
+### 3.12 Script de servicio y arranque automático (2026-11-14)
+
+**Contexto.** `deploy_unoq.sh` dejaba el servidor corriendo con `nohup`, pero
+no había una interfaz uniforme para detenerlo, consultarlo o reiniciarlo sin
+`sudo`. Tampoco había arranque automático tras un reinicio de la placa.
+
+**Decisión.** Se agregó `scripts/servicio.sh` (333 líneas, `bash -n` OK) con
+`start`, `stop`, `restart`, `status`, `logs [N]`, `boot-enable`,
+`boot-disable`, `boot-status` y `help`. Usa PID file, `flock`, health check
+HTTP y `nohup`; no toca systemd ni el puerto 8000. La unidad systemd queda como
+alternativa que requiere `sudo`.
+
+**Bug del lock.** El servidor se lanzaba dentro de un subshell que heredaba el
+descriptor `9` del `flock`. Mientras el servidor vivía, el lock quedaba tomado
+y `stop`/`restart` fallaban con “otra operacion de servicio esta en curso”. Se
+corrigió cerrando el descriptor en el hijo (`nohup ... 9>&- &`). **Verificado
+en la placa:** `stop`, `start`, `restart` y otro ciclo `stop`/`start`
+funcionaron sin el error.
+
+**IP de `status`.** `hostname -I` devolvía primero la bridge de Docker, no la
+IP de LAN. Se cambió a la IP de la ruta por defecto (`ip -4 route get`), con
+fallback a `hostname -I` y `127.0.0.1`. En la documentación se usa siempre
+`<IP_DE_LA_UNO_Q>`, nunca una IP real.
+
+**Arranque automático.** `boot-enable` agrega una sola línea `@reboot` al
+crontab del usuario, etiquetada `# superfoto-unoq-service`; es idempotente y
+no requiere `sudo`. `boot-status` confirma el estado y `boot-disable` la
+quita. Requiere que el servicio `cron` esté activo.
+
+**Verificación real en la UNO Q** (PID efímeros):
+
+| Paso | Resultado |
+|---|---|
+| `stop` | puerto 8010 libre |
+| `start` | PID 12906, health OK |
+| `restart` | PID 13046, sin error de lock |
+| `stop` + `start` | PID 13206 |
+| `status` | estado, URL y health correctos |
+| `logs 6` | últimas 6 líneas |
+| `boot-enable` ×2 | una sola línea en el crontab |
+| `boot-status` | habilitado |
+| `detector-tarjetas` | intacto en 8000 |
+
+**Pruebas.** Se agregó `tests/test_service_script.py` con 6 pruebas
+(existencia/ejecutable, `bash -n`, comandos/guardas, `help`, `status` con data
+dir temporal y prohibición del 8000). La suite pasó de 99 a **105 tests**.
+
+**Seguridad.** El script valida el PID contra `/proc/<pid>/cmdline` antes de
+matar, solo adopta procesos de `app/server.py`, no hardcodea IPs y nunca toca
+el 8000.
+
 ---
 
 ## 4. Enfoques descartados (y por qué no reintentarlos)
@@ -259,9 +310,10 @@ Ninguno de estos fixes cambió el algoritmo; todos endurecieron bordes.
 
 ## 6. Pruebas y validación
 
-- **Suite:** 59 funciones de test en `tests/`, sin dependencias externas de
-  pytest más allá de lo estándar. Cubren storage, alineación, sesión, API,
-  fuente sintética, calidad, CLI y el sketch.
+- **Suite:** 105 funciones de test en `tests/` (99 del núcleo + 6 del script
+  de servicio), sin dependencias externas de pytest más allá de lo estándar.
+  Cubren storage, alineación, sesión, API, fuente sintética, calidad, CLI, el
+  sketch y `scripts/servicio.sh`.
 - **Benchmark:** `scripts/benchmark_sr.py` genera un ground truth
   **banda-limitado** (no un patrón perfecto), lo degrada con PSF, jitter,
   ruido σ=3 y JPEG q=88, y compara bicúbico vs. fusión. Criterio de aprobación:
@@ -297,6 +349,11 @@ artefacto. Banda-limitarlo evita esa trampa.
    corregibles sin tocar el núcleo.
 8. **Un contraejemplo vale tanto como un éxito.** La sesión de 50 s con 7
    frames justifica el aviso de movimiento mejor que cualquier explicación.
+9. **El ciclo de vida es parte del producto.** Un servidor que arranca pero no
+   se puede reiniciar con seguridad es una bomba de tiempo operativa.
+10. **Probar `restart`, no solo `start`.** El bug del `flock` heredado solo
+    apareció al detener y volver a arrancar; los tests de humo ahora cubren el
+    cierre de `9>&-`.
 
 ---
 
@@ -336,6 +393,8 @@ artefacto. Banda-limitarlo evita esa trampa.
 | 7 | Prueba real de 19 s: 186 frames, 3840×2160, shift 0.66 px. |
 | 8 | Auditoría: 10 incidencias corregidas; aprobada sin incidencias. |
 | 9 | Documentación final: README, datasheet, developer, límites y esta bitácora. |
+| 10 | `scripts/servicio.sh`: start/stop/restart/status/logs sin sudo; fix del lock heredado. |
+| 11 | Arranque automático por cron (`boot-enable`) y verificación real en la UNO Q. |
 
 ---
 
