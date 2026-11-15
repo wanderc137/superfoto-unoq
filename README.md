@@ -831,6 +831,57 @@ caminos descartados están en [`docs/BITACORA.md`](docs/BITACORA.md).
 
 ---
 
+## Ficha de evaluación
+
+**Madurez global: 4.3/5**
+
+| Criterio | Nota | Evidencia |
+|---|---:|---|
+| Madurez | 4/5 | 105 funciones de test, auditoría aprobada y servicio verificado en la placa con una sesión real de microscopía de 186 cuadros y 8,3 MP. No hay tests de integración con hardware. |
+| Reproducibilidad | 4/5 | Banco sintético documentado con cifras exactas (24,34 dB de partida, 30,81 dB final) y despliegue automatizado. Depende de la placa y de la fuente de video elegida. |
+| Documentación | 5/5 | README, BITACORA, datasheet, developer y límites describen pipeline, API, despliegue, banco de prueba y deuda técnica con nombres de archivo y parámetros. |
+| Honestidad de límites | 5/5 | Declara que la fusión online sola queda por debajo de bicúbica, que el zoom 8x es digital, que el caso de cámara en movimiento aceptó 7 de 1250 cuadros y que el PSF 0,6 es aproximado. |
+| Valor demostrativo | 4/5 | Muestra superresolución multi-fotograma sobre ARM sin GPU, con una mejora medida de +6,47 dB y una sesión real de 3840x2160. |
+| Facilidad de despliegue | 4/5 | Un script tar+SSH y servicio.sh con start, stop, logs y arranque automático; no requiere pip ni sudo. Asume SSH en el puerto 2222 y usuario arduino. |
+
+Sirve a quien quiera documentar muestras inmóviles con una UNO Q y entender un pipeline de superresolución honesto, con métricas y contraejemplos. La limitación que más pesa es que solo funciona con escenas quietas y que el aumento real es de 2x lineal, no el zoom digital que muestra la interfaz.
+
+## Lo que no funcionó
+
+### Objetivo inicial — Meta imposible de 10K aumentos
+
+El planteamiento original prometía 10.000 aumentos tipo microscopio, algo que la óptica y el sensor no permiten. Se reformuló el alcance a 2x lineal (4x píxeles) y se fijó un banco sintético con umbral de +1,5 dB para no publicar resultados no verificables.
+
+### v1 · acumulador drizzle — Acumulador saturado a 255
+
+El acumulador en uint8 se saturaba al sumar cientos de aportes y perdía rango dinámico. Se pasó a uint16 con tope 65535 y se agregó una prueba de 400 cuadros.
+
+### v1 · fusión online — La fusión sola quedaba por debajo de bicúbica
+
+La fusión online sin refinamiento daba 23,48 dB frente a 24,34 dB de bicúbica, es decir, empeoraba la imagen. Se incorporaron back-projection iterativa y Richardson-Lucy, que llevaron el resultado a 30,81 dB.
+
+### v1.1 · servicio — El lock heredado bloqueaba stop y restart
+
+El proceso servidor heredaba el descriptor del lock de servicio.sh, así que stop y restart fallaban con «otra operación en curso». Se cierra el fd 9 en el hijo y se verificó en la placa con tres reinicios consecutivos.
+
+## Preguntas típicas
+
+**¿Qué es SuperFoto UNO Q?**
+
+Es una aplicación local de superresolución multi-fotograma que corre en el lado Linux de la Arduino UNO Q. Captura video de un objeto inmóvil, selecciona los cuadros más nítidos, los alinea y los fusiona para obtener una imagen de hasta 4 veces más píxeles.
+
+**¿Qué no hace?**
+
+No es un microscopio, un escáner ni un upscaler por IA: no inventa detalle y no supera de forma realista un factor 2 lineal. Tampoco corrige escenas en movimiento; si la cámara se mueve, descarta cuadros y avisa.
+
+**¿Cómo se ejecuta o despliega?**
+
+En la placa se despliega con scripts/deploy_unoq.sh por SSH y se administra con scripts/servicio.sh; la interfaz queda en el puerto 8010. También existe scripts/process_video.py para procesar un video por línea de comandos sin navegador.
+
+**¿Qué se puede reutilizar?**
+
+El pipeline de calidad, alineación subpíxel, drizzle, back-projection y Richardson-Lucy es reutilizable en otros proyectos de imagen sobre ARM. También lo son el servidor HTTP sin dependencias y el esquema de sesiones con escritura atómica.
+
 ## Licencia y créditos
 
 El código está publicado bajo la **licencia MIT** — ver [`LICENSE`](LICENSE),
