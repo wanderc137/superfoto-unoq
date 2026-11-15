@@ -72,3 +72,18 @@ def test_probe_photo_non_image_response():
     finally:
         httpd.shutdown()
         httpd.server_close()
+
+
+def test_probe_ip_camera_accepts_url_ending_in_video():
+    """Regresion: la URL canonica termina en /video y el probe debe usar la base.
+
+    Antes se pedia ``/video/status.json`` y ``/video/video`` (404), por lo que
+    una camara valida se reportaba como caida y la sesion no arrancaba.
+    """
+    from app.source import probe_ip_camera
+
+    with FakeMJPEGServer(width=320, height=240) as server:
+        for url in (server.url, f"{server.url}/video", f"{server.url}/photo.jpg"):
+            info = probe_ip_camera(url, timeout=3.0)
+            assert info["ok"] is True, f"{url} -> {info}"
+            assert info["url"] == f"{server.url}/video"

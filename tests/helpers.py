@@ -104,7 +104,7 @@ class FakeMJPEGServer:
                 try:
                     while not server._stop.is_set():
                         part = bytearray()
-                        part += f"{server.boundary}\r\n".encode()
+                        part += f"{server.wire_boundary}\r\n".encode()
                         part += b"Content-Type: image/jpeg\r\n"
                         if server.content_length:
                             part += f"Content-Length: {len(server.jpeg)}\r\n".encode()
@@ -130,6 +130,16 @@ class FakeMJPEGServer:
     @property
     def port(self) -> int:
         return int(self.httpd.server_address[1])
+
+    @property
+    def wire_boundary(self) -> str:
+        """Delimitador tal como viaja en el stream: MIME exige ``--`` delante.
+
+        IP Webcam anuncia ``boundary=<token>`` y en el wire escribe
+        ``--<token>``; el helper debe imitar eso para que los tests cubran el
+        caso real (boundary aleatorio sin ``--`` en el header).
+        """
+        return self.boundary if self.boundary.startswith("--") else "--" + self.boundary
 
     @property
     def url(self) -> str:

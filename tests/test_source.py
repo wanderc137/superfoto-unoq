@@ -68,6 +68,44 @@ def test_source_mjpeg_parser_garbage_is_tolerated():
     assert len(parser.feed(good)) == 1
 
 
+def test_source_parse_boundary_real_ip_webcam_header():
+    """IP Webcam real anuncia el token SIN el prefijo ``--``."""
+    from app.source import parse_boundary
+
+    assert parse_boundary(
+        "multipart/x-mixed-replace;boundary=Ba4oTvQMY8ew04N8dcnM"
+    ) == b"Ba4oTvQMY8ew04N8dcnM"
+    assert parse_boundary(
+        'multipart/x-mixed-replace; boundary="tok-123"'
+    ) == b"tok-123"
+    assert parse_boundary("multipart/x-mixed-replace; boundary=--myboundary") == b"--myboundary"
+    assert parse_boundary("image/jpeg") == b"--myboundary"
+
+
+def test_source_mjpeg_parser_autodetects_boundary_from_stream():
+    """Si el Content-Type no anuncia boundary, se deduce de la 1ra linea."""
+    frames = [encode_jpeg(make_frame(48, 32, seed=i)) for i in range(3)]
+    payload = _multipart(frames, boundary=b"--RandomTok42")
+    parser = MJPEGStreamParser()  # boundary por defecto, distinto del real
+    out: list[bytes] = []
+    for i in range(0, len(payload), 9):
+        out.extend(parser.feed(payload[i:i + 9]))
+    assert len(out) == 3
+    assert parser.boundary == b"--RandomTok42"
+
+
+def test_source_ip_camera_random_boundary_without_dashes():
+    """Regresion: IP Webcam usa un boundary aleatorio por conexion."""
+    with FakeMJPEGServer(width=160, height=120, boundary="Ba4oTvQMY8ew04N8dcnM") as server:
+        src = IPCameraSource(server.url, timeout=2.0, frame_timeout_ms=4000,
+                             reconnect_backoff=(0.05, 0.2))
+        src.start()
+        ok, frame = src.read()
+        src.stop()
+    assert ok is True, f"sin frames (error={src.error})"
+    assert frame is not None and frame.shape[:2] == (120, 160)
+
+
 # ---------------------------------------------------------------- IP Webcam
 def test_source_ip_camera_reads_stream():
     with FakeMJPEGServer(width=160, height=120, content_length=True) as server:

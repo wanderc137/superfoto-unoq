@@ -659,10 +659,19 @@ class SuperFotoSession:
         if self.scene_moving:
             message = f"{SCENE_MOTION_ADVICE}. Se fusionaron {self.accepted} frames."
         elif self.accepted < 8:
-            message = (
-                f"Pocos frames utiles ({self.accepted} de {self.seen}): "
-                "revisa textura de la escena, enfoque e iluminacion"
-            )
+            if self.rejected == 0 and self.accepted == self.seen:
+                # Todos los frames vistos se fusionaron: el limite fue el tiempo
+                # o el objetivo, no la calidad. El mensaje anterior culpaba a la
+                # escena y confundia ("pocos utiles 5 de 5").
+                message = (
+                    f"Superfoto lista con {self.accepted} frames (captura corta). "
+                    "Aumenta la duracion para promediar mas frames y reducir ruido"
+                )
+            else:
+                message = (
+                    f"Pocos frames utiles ({self.accepted} de {self.seen}): "
+                    "revisa textura de la escena, enfoque e iluminacion"
+                )
         elif self.align_invalid > self.accepted * 3:
             message = (
                 f"Superfoto lista con {self.accepted} frames; "

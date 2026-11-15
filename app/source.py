@@ -35,6 +35,7 @@ import numpy as np
 log = logging.getLogger("superfoto.source")
 
 DEFAULT_BOUNDARY = b"--myboundary"
+_BOUNDARY_LINE_RE = re.compile(rb"^(?:\r?\n)?(--[^\r\n]{1,120})(?:\r\n|\n)")
 IMAGE_EXTENSIONS = (".jpg", ".jpeg", ".png", ".bmp", ".webp", ".tif", ".tiff")
 
 
@@ -74,6 +75,10 @@ class MJPEGStreamParser:
     Tolera que los chunks de red corten en cualquier byte: mantiene un buffer
     interno y solo emite frames completos. Usa ``Content-Length`` cuando el
     servidor lo envia (IP Webcam lo hace) y cae a busqueda de boundary si no.
+
+    IP Webcam genera un boundary **aleatorio por conexion** y lo anuncia sin
+    el prefijo ``--`` (``boundary=Ba4oTvQMY8ew04N8dcnM``). Si el servidor no
+    lo anuncia, el parser lo detecta de la primera linea del stream.
     """
 
     def __init__(self, boundary: bytes = DEFAULT_BOUNDARY, max_buffer: int = 32 * 1024 * 1024) -> None:
@@ -117,13 +122,36 @@ class MJPEGStreamParser:
     def _consume_boundary(self) -> bool:
         """Busca y consume un boundary al inicio del buffer."""
         idx = self._find_boundary()
+        if idx < 0 and self._adopt_boundary_from_stream():
+            idx = self._find_boundary()
         if idx < 0:
-            # Conservar solo una cola corta por si el boundary viene partido.
-            keep = len(self.boundary) * 2
+            # Conservar una cola por si el boundary viene partido (puede ser
+            # largo: IP Webcam usa tokens aleatorios de ~20-40 bytes).
+            keep = max(len(self.boundary) * 2, 512)
             if len(self._buf) > keep:
                 del self._buf[:-keep]
             return False
         del self._buf[: idx + len(self.boundary)]
+        return True
+
+    def _adopt_boundary_from_stream(self) -> bool:
+        """Deduce el boundary de la primera linea si el servidor no lo anuncio.
+
+        IP Webcam responde a veces sin ``boundary=`` en el Content-Type. En ese
+        caso el stream arranca con ``--<token>\\r\\n`` y ese token es el
+        boundary real. Solo se intenta mientras siga el boundary por defecto.
+        """
+        if self.boundary != DEFAULT_BOUNDARY:
+            return False
+        match = _BOUNDARY_LINE_RE.match(bytes(self._buf))
+        if not match:
+            return False
+        candidate = match.group(1)
+        # Descartar lineas que claramente son payload/headers, no boundaries.
+        if len(candidate) < 3 or b"Content-" in candidate or candidate.endswith(b"--"):
+            return False
+        self.boundary = candidate
+        log.debug("MJPEG: boundary detectado en el stream: %r", candidate)
         return True
 
     def _read_headers(self) -> bool:
@@ -198,11 +226,18 @@ def _parse_content_length(headers: str) -> int | None:
 
 
 def parse_boundary(content_type: str) -> bytes:
-    """Extrae el boundary de un Content-Type multipart."""
-    match = re.search(r'boundary\\s*=\\s*"?([^";]+)"?', content_type or "", re.IGNORECASE)
+    """Extrae el boundary de un Content-Type multipart.
+
+    Acepta ``boundary=token``, ``boundary="token"`` y ``boundary=--token``
+    (IP Webcam real anuncia el token sin ``--``). Devuelve el valor tal cual;
+    ``MJPEGStreamParser`` agrega el prefijo ``--`` si falta.
+    """
+    match = re.search(r'boundary\s*=\s*"?([^";,]+)"?', content_type or "", re.IGNORECASE)
     if not match:
         return DEFAULT_BOUNDARY
-    raw = match.group(1).strip()
+    raw = match.group(1).strip().strip('"')
+    if not raw:
+        return DEFAULT_BOUNDARY
     return raw.encode("latin-1", "replace")
 
 
@@ -552,9 +587,14 @@ def probe_ip_camera(url: str, timeout: float = 1.2) -> dict:
         result["error"] = str(exc)
         return result
 
+    # ``url`` es canonica y termina en /video: para /status.json y /photo.jpg
+    # hace falta la base sin ese sufijo. Concatenar sobre ``url`` generaba
+    # /video/status.json (404) y hacia fallar camaras perfectamente validas.
+    base = url[: -len(_IPWEBCAM_STREAM_PATH)] or url
+
     def fetch_json(path: str) -> dict | None:
         try:
-            with urllib.request.urlopen(url.rstrip("/") + path, timeout=timeout) as resp:
+            with urllib.request.urlopen(base.rstrip("/") + path, timeout=timeout) as resp:
                 import json
 
                 return json.loads(resp.read().decode("utf-8", "replace"))
@@ -571,7 +611,7 @@ def probe_ip_camera(url: str, timeout: float = 1.2) -> dict:
 
     # Fallback: mirar si /video responde multipart.
     try:
-        req = urllib.request.Request(url.rstrip("/") + "/video", headers={"User-Agent": "superfoto-unoq/1.0"})
+        req = urllib.request.Request(url, headers={"User-Agent": "superfoto-unoq/1.0"})
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             ctype = resp.headers.get("Content-Type", "")
             if "multipart" in ctype.lower() or "jpeg" in ctype.lower():
