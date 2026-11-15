@@ -833,9 +833,9 @@ caminos descartados están en [`docs/BITACORA.md`](docs/BITACORA.md).
 
 ## Licencia y créditos
 
-No hay un archivo `LICENSE` en este repositorio. El código se comparte como
-material del proyecto; si se redistribuye, agregá una licencia explícita y
-respetá las de las dependencias.
+El código está publicado bajo la **licencia MIT** — ver [`LICENSE`](LICENSE),
+© 2026 wanderc137. Si redistribuís, respetá esa licencia y las de las
+dependencias listadas abajo.
 
 - **Arduino UNO Q** y el core `arduino:zephyr` — Arduino.
 - **Zephyr RTOS** — Zephyr Project.

@@ -284,24 +284,24 @@ footer{position:relative;z-index:1;border-top:1px solid rgba(255,255,255,.08);pa
 <section class="hero">
   <div class="wrap hero-grid">
     <div class="hero-copy">
-      <div class="eyebrow">Arduino UNO Q · Arduino</div>
+      <div class="eyebrow">Arduino UNO Q · Superresolución</div>
       <h1>SuperFoto UNO Q</h1>
       <p class="lead">Superfotografía por fusión de miles de frames, corriendo en una Arduino UNO Q.</p>
       <div class="hero-actions">
         <a class="btn btn-primary" href="https://github.com/wanderc137/superfoto-unoq" target="_blank" rel="noopener">Ver el repositorio <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
         <a class="btn btn-ghost" href="https://github.com/wanderc137/superfoto-unoq#readme" target="_blank" rel="noopener">Leer la documentación</a>
       </div>
-      <div class="hero-badges"><span class="badge">Arduino</span><span class="badge">Arduino UNO Q</span><span class="badge">Python</span><span class="badge">FastAPI</span><span class="badge">Flask</span><span class="badge">MIT</span></div>
+      <div class="hero-badges"><span class="badge">Arduino UNO Q</span><span class="badge">Python</span><span class="badge">OpenCV</span><span class="badge">NumPy</span><span class="badge">stdlib</span><span class="badge">MIT</span></div>
     </div>
     <div class="hero-visual">
-      <div class="visual-frame"><img src="assets/og.svg" alt="Arquitectura de SuperFoto"></div>
-      <div class="visual-caption">Vista general de SuperFoto.</div>
-      <div class="float-chip"><span class="live-dot"></span>Documentación verificada</div>
+      <div class="visual-frame"><img src="assets/og.svg" alt="SuperFoto UNO Q — superresolución por fusión de frames"></div>
+      <div class="visual-caption">Superfotografía: de miles de frames a una imagen nítida.</div>
+      <div class="float-chip"><span class="live-dot"></span>186 frames · +6,47 dB PSNR</div>
     </div>
   </div>
 </section>
 
-<section class="stats"><div class="wrap stats-grid"><div class="stat"><div class="stat-value">69</div><div class="stat-label">archivos</div></div><div class="stat"><div class="stat-value">7</div><div class="stat-label">tecnologías</div></div><div class="stat"><div class="stat-value">5</div><div class="stat-label">documentos</div></div><div class="stat"><div class="stat-value">MIT</div><div class="stat-label">licencia</div></div></div></section>
+<section class="stats"><div class="wrap stats-grid"><div class="stat"><div class="stat-value">+6,47 dB</div><div class="stat-label">PSNR ganada</div></div><div class="stat"><div class="stat-value">186</div><div class="stat-label">frames fusionados</div></div><div class="stat"><div class="stat-value">3840×2160</div><div class="stat-label">salida real</div></div><div class="stat"><div class="stat-value">105</div><div class="stat-label">pruebas</div></div></div></section>
 
 <section class="section" id="problema">
   <div class="wrap">
@@ -311,8 +311,8 @@ footer{position:relative;z-index:1;border-top:1px solid rgba(255,255,255,.08);pa
       <p class="section-sub">Qué resuelve y por qué está construido así.</p>
     </div>
     <div class="split">
-      <div class="card reveal"><div class="icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2.5 20h19L12 3Z"/><path d="M12 9v5M12 17v.01"/></svg></div><h3>El problema</h3><p>El proyecto nace de una necesidad concreta y se documenta con límites reales.</p></div>
-      <div class="card reveal"><div class="icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3"/><rect x="9.5" y="9.5" width="5" height="5" rx="1"/></svg></div><h3>La solución</h3><p>Una implementación funcional, publicada y disponible para inspeccionar.</p></div>
+      <div class="card reveal"><div class="icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2.5 20h19L12 3Z"/><path d="M12 9v5M12 17v.01"/></svg></div><h3>El problema</h3><p>Una cámara de celular o de microscopio está limitada por el sensor y la difracción: al ampliar el zoom solo ves el mismo píxel agrandado, con ruido y sin detalle nuevo. El detalle fino se pierde entre píxeles y no se recupera de un único frame.</p></div>
+      <div class="card reveal"><div class="icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3"/><rect x="9.5" y="9.5" width="5" height="5" rx="1"/></svg></div><h3>La solución</h3><p>Capturar miles de frames con micro-desplazamiento subpíxel y fusionarlos: descartar los borrosos (lucky imaging), alinear cada frame a fracciones de píxel y acumular la señal real para recuperar hasta ~2× de resolución lineal (4× en píxeles).</p></div>
     </div>
   </div>
 </section>
@@ -324,7 +324,7 @@ footer{position:relative;z-index:1;border-top:1px solid rgba(255,255,255,.08);pa
       <h2>Cómo funciona, paso a paso</h2>
       <p class="section-sub">El recorrido desde el código hasta el resultado.</p>
     </div>
-    <div class="timeline reveal"><div class="step"><div class="step-num">01</div><div class="step-body"><h3>Clona el repositorio</h3><p>git clone del proyecto y revisa el README.</p></div></div><div class="step"><div class="step-num">02</div><div class="step-body"><h3>Instala el entorno</h3><p>Sigue las dependencias del stack detectado.</p></div></div><div class="step"><div class="step-num">03</div><div class="step-body"><h3>Configura</h3><p>Copia los archivos *.example y usa tus propios valores.</p></div></div><div class="step"><div class="step-num">04</div><div class="step-body"><h3>Ejecuta y verifica</h3><p>Prueba el flujo principal y revisa los logs.</p></div></div></div>
+    <div class="timeline reveal"><div class="step"><div class="step-num">01</div><div class="step-body"><h3>Captura</h3><p>Recibe frames de IP Webcam (MJPEG), archivo de video, webcam USB o carpeta de imágenes. En la UNO Q, el descubrimiento por sysfs descarta los decoders Venus (/dev/video0/video1) que no son cámaras.</p></div></div><div class="step"><div class="step-num">02</div><div class="step-body"><h3>Gate de calidad (lucky imaging)</h3><p>Varianza del Laplaciano sobre el ROI central (50%): un umbral adaptativo por percentil descarta los frames borrosos y se queda solo con los nítidos.</p></div></div><div class="step"><div class="step-num">03</div><div class="step-body"><h3>Alineación subpíxel</h3><p>phaseCorrelate para el desplazamiento grueso + refinamiento ECC hasta un error medio de ~0.04 px. Sin alinear, la fusión emborrona en lugar de mejorar.</p></div></div><div class="step"><div class="step-num">04</div><div class="step-body"><h3>Fusión drizzle</h3><p>Acumulación en una rejilla fina con kernel Lanczos4 y pesos por nitidez + exposición. Trabaja en uint16 para no saturar la suma de señal.</p></div></div><div class="step"><div class="step-num">05</div><div class="step-body"><h3>Refinamiento IBP</h3><p>Iterative back-projection: proyecta el resultado a la resolución original, compara con cada frame y corrige el error de forma iterativa.</p></div></div><div class="step"><div class="step-num">06</div><div class="step-body"><h3>Deconvolución Richardson-Lucy</h3><p>Desconvoluciona con una PSF gaussiana (σ=0.6, 15 iteraciones) solo sobre la luminancia en espacio Lab, para no alterar el color.</p></div></div></div>
   </div>
 </section>
 
@@ -335,8 +335,8 @@ footer{position:relative;z-index:1;border-top:1px solid rgba(255,255,255,.08);pa
       <h2>Cómo está construido</h2>
       <p class="section-sub">Una vista de los componentes principales y cómo se conectan.</p>
     </div>
-    <figure class="figure reveal"><img src="assets/og.svg" alt="Arquitectura de SuperFoto" loading="lazy"><figcaption>Vista general de SuperFoto.</figcaption></figure>
-    <div class="arch-points reveal"><div class="card"><h4>Entrada</h4><p>El punto de entrada está documentado en el README.</p></div><div class="card"><h4>Datos</h4><p>La configuración local se mantiene fuera del repositorio.</p></div><div class="card"><h4>Salida</h4><p>El proyecto se ejecuta siguiendo la guía de operación.</p></div></div>
+    <figure class="figure reveal"><img src="img/compare_stoma.jpg" alt="Prueba real: un frame bicúbico vs. fusión de 186 frames" loading="lazy"><figcaption>Prueba real de punta a punta: un frame (bicúbico 2×) vs. fusión SuperFoto de 186 frames.</figcaption></figure>
+    <div class="arch-points reveal"><div class="card"><h4>Fuentes</h4><p>IP Webcam (MJPEG), video, webcam USB o carpeta. En la UNO Q, sysfs descarta los decoders Venus que no son cámaras.</p></div><div class="card"><h4>Servidor HTTP</h4><p>stdlib http.server + threading en el puerto 8010. API REST de sesiones y un único worker activo a la vez.</p></div><div class="card"><h4>Pipeline SR</h4><p>Gate de calidad → alineación subpíxel → fusión drizzle → IBP → deconvolución Richardson-Lucy.</p></div></div>
   </div>
 </section>
 
@@ -347,11 +347,23 @@ footer{position:relative;z-index:1;border-top:1px solid rgba(255,255,255,.08);pa
       <h2>Decisiones de ingeniería</h2>
       <p class="section-sub">Decisiones que hacen que el proyecto sea útil, mantenible y honesto.</p>
     </div>
-    <div class="features reveal"><div class="feature"><div class="icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3"/><rect x="9.5" y="9.5" width="5" height="5" rx="1"/></svg></div><h3>El problema que resuelve</h3><p>Sección documentada en el README del proyecto.</p></div><div class="feature"><div class="icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3"/><rect x="9.5" y="9.5" width="5" height="5" rx="1"/></svg></div><h3>Cómo funciona</h3><p>Sección documentada en el README del proyecto.</p></div><div class="feature"><div class="icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3"/><rect x="9.5" y="9.5" width="5" height="5" rx="1"/></svg></div><h3>Hardware y conexiones</h3><p>Sección documentada en el README del proyecto.</p></div><div class="feature"><div class="icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3"/><rect x="9.5" y="9.5" width="5" height="5" rx="1"/></svg></div><h3>Arquitectura y flujo de datos</h3><p>Sección documentada en el README del proyecto.</p></div><div class="feature"><div class="icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3"/><rect x="9.5" y="9.5" width="5" height="5" rx="1"/></svg></div><h3>Resultados medidos</h3><p>Sección documentada en el README del proyecto.</p></div><div class="feature"><div class="icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3"/><rect x="9.5" y="9.5" width="5" height="5" rx="1"/></svg></div><h3>Comparativa visual real</h3><p>Sección documentada en el README del proyecto.</p></div></div>
+    <div class="features reveal"><div class="feature"><div class="icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3"/><rect x="9.5" y="9.5" width="5" height="5" rx="1"/></svg></div><h3>Límites honestos</h3><p>Hasta ~2× lineal (4× en píxeles). No recupera difracción ni inventa detalle: el zoom 8× es digital y está documentado.</p></div><div class="feature"><div class="icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3"/><rect x="9.5" y="9.5" width="5" height="5" rx="1"/></svg></div><h3>Lucky imaging adaptativo</h3><p>El umbral de nitidez sale de un percentil, no de una constante: se adapta a cada sesión sin tocar parámetros.</p></div><div class="feature"><div class="icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3"/><rect x="9.5" y="9.5" width="5" height="5" rx="1"/></svg></div><h3>Fusión en uint16</h3><p>La acumulación drizzle suma señal en uint16 y lleva un mapa de coverage por píxel para saber dónde hubo datos reales.</p></div><div class="feature"><div class="icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3"/><rect x="9.5" y="9.5" width="5" height="5" rx="1"/></svg></div><h3>Sin pip ni frameworks</h3><p>Solo stdlib http.server + threading + OpenCV + NumPy. Se instala con apt en la UNO Q: nada de pip, Flask ni FastAPI.</p></div><div class="feature"><div class="icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3"/><rect x="9.5" y="9.5" width="5" height="5" rx="1"/></svg></div><h3>Despliegue sin sudo</h3><p>tar + ssh (puerto 2222), preserva data/sessions entre deploys y arranca por cron @reboot. El puerto 8000 queda reservado.</p></div><div class="feature"><div class="icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3"/><rect x="9.5" y="9.5" width="5" height="5" rx="1"/></svg></div><h3>105 pruebas</h3><p>pytest cubre MJPEG, reconexión, gate, alineación, fusión uint16, memoria, storage atómico, API, CLI, sketch y UI sin innerHTML.</p></div></div>
   </div>
 </section>
 
-
+<section class="section tight">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <div class="kicker">05 — Resultados medidos</div>
+      <h2>Lo que se mide, se verifica</h2>
+      <p class="section-sub">Sin "magia": ganancias reales y límites claros, medidos sobre la placa.</p>
+    </div>
+    <div class="gallery reveal">
+      <figure class="figure"><img src="img/compare_stoma_detail.jpg" alt="Detalle 1:1 de la superresolución" loading="lazy"><figcaption>Detalle 1:1 del estoma: bicúbico de un frame vs. SuperFoto de 186 frames.</figcaption></figure>
+      <div class="card"><h3>Métricas de referencia</h3><p style="font-family:'JetBrains Mono',monospace;font-size:13px;line-height:2.1;color:#c7d3e2">+6,47 dB PSNR (benchmark sintético)<br>+5,31 dB en la UNO Q (400×300 → 800×600)<br>SSIM +0,028<br>487 frames vistos · 186 aceptados<br>1920×1080 → 3840×2160 (8,3 MP)<br>shift medio 0,66 px</p></div>
+    </div>
+  </div>
+</section>
 
 <section class="section tight">
   <div class="wrap">
@@ -362,14 +374,17 @@ footer{position:relative;z-index:1;border-top:1px solid rgba(255,255,255,.08);pa
     </div>
     <div class="stack-grid">
       <div class="reveal">
-        <div class="chips"><span class="chip">Arduino</span><span class="chip">Arduino UNO Q</span><span class="chip">Python</span><span class="chip">FastAPI</span><span class="chip">Flask</span><span class="chip">OpenCV</span></div>
-        <div class="note"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4.5 6v5.5c0 4.6 3.2 8.4 7.5 9.5 4.3-1.1 7.5-4.9 7.5-9.5V6L12 3Z"/><path d="m9 12 2 2 4-4"/></svg><span>Los secretos y configuraciones locales quedan fuera del repositorio.</span></div>
+        <div class="chips"><span class="chip">Arduino UNO Q</span><span class="chip">STM32U585</span><span class="chip">Debian 13</span><span class="chip">Python 3</span><span class="chip">OpenCV</span><span class="chip">NumPy</span><span class="chip">http.server</span><span class="chip">pytest</span></div>
+        <div class="note"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4.5 6v5.5c0 4.6 3.2 8.4 7.5 9.5 4.3-1.1 7.5-4.9 7.5-9.5V6L12 3Z"/><path d="m9 12 2 2 4-4"/></svg><span>Sin pip ni frameworks web: stdlib + OpenCV + NumPy, instalables con apt en la UNO Q.</span></div>
       </div>
       <div class="terminal reveal">
         <div class="terminal-bar"><i></i><i></i><i></i><span>bash — superfoto-unoq</span></div>
-        <pre><span class="p">$</span> git clone https://github.com/wanderc137/superfoto-unoq.git
-<span class="p">$</span> cd superfoto-unoq
-<span class="c"># Revisa README.md y docs/datasheet.md</span></pre>
+        <pre><span class="c"># En la UNO Q (o local): dependencias con apt, sin pip</span>
+<span class="p">$</span> sudo apt install python3-opencv python3-numpy
+<span class="c"># Procesa un video local</span>
+<span class="p">$</span> python3 scripts/process_video.py --input video.mp4 --scale 2.0
+<span class="c"># Despliega a la placa por ssh (puerto 2222, sin sudo)</span>
+<span class="p">$</span> ./scripts/deploy_unoq.sh</pre>
       </div>
     </div>
   </div>
@@ -382,14 +397,14 @@ footer{position:relative;z-index:1;border-top:1px solid rgba(255,255,255,.08);pa
       <h2>Todo está escrito</h2>
       <p class="section-sub">Cada decisión, cada límite y cada comando están documentados en el repositorio. Sin folletos: lo que funciona se muestra, lo que no, también.</p>
     </div>
-    <div class="docs-grid reveal"><a class="doc-card" href="https://github.com/wanderc137/superfoto-unoq/blob/main/README.md" target="_blank" rel="noopener"><span class="tag">README</span><h3>Guía completa</h3><p>Qué es, cómo funciona, instalación y límites.</p><span class="arrow">Abrir documento <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></a><a class="doc-card" href="https://github.com/wanderc137/superfoto-unoq/blob/main/docs/datasheet.md" target="_blank" rel="noopener"><span class="tag">DATASHEET</span><h3>Manual de operación</h3><p>Requisitos, uso, parámetros y diagnóstico.</p><span class="arrow">Abrir documento <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></a><a class="doc-card" href="https://github.com/wanderc137/superfoto-unoq/blob/main/docs/developer.md" target="_blank" rel="noopener"><span class="tag">DEVELOPER</span><h3>Guía de código</h3><p>Arquitectura, módulos y extensión.</p><span class="arrow">Abrir documento <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></a><a class="doc-card" href="https://github.com/wanderc137/superfoto-unoq/blob/main/docs/REFERENCES.md" target="_blank" rel="noopener"><span class="tag">REFERENCES</span><h3>Referencias</h3><p>Documentación externa y buenas prácticas.</p><span class="arrow">Abrir documento <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></a><a class="doc-card" href="https://github.com/wanderc137/superfoto-unoq/blob/main/docs/servicio.md" target="_blank" rel="noopener"><span class="tag">SERVICIO</span><h3>Operación sin sudo</h3><p>Start, stop, logs y arranque automático por cron.</p><span class="arrow">Abrir documento <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></a></div>
+    <div class="docs-grid reveal"><a class="doc-card" href="https://github.com/wanderc137/superfoto-unoq/blob/main/README.md" target="_blank" rel="noopener"><span class="tag">README</span><h3>Guía completa</h3><p>Qué es, cómo funciona, instalación y límites.</p><span class="arrow">Abrir documento <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></a><a class="doc-card" href="https://github.com/wanderc137/superfoto-unoq/blob/main/docs/datasheet.md" target="_blank" rel="noopener"><span class="tag">DATASHEET</span><h3>Manual de operación</h3><p>Requisitos, uso, parámetros y diagnóstico.</p><span class="arrow">Abrir documento <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></a><a class="doc-card" href="https://github.com/wanderc137/superfoto-unoq/blob/main/docs/developer.md" target="_blank" rel="noopener"><span class="tag">DEVELOPER</span><h3>Guía de código</h3><p>Arquitectura, módulos y extensión.</p><span class="arrow">Abrir documento <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></a><a class="doc-card" href="https://github.com/wanderc137/superfoto-unoq/blob/main/docs/REFERENCES.md" target="_blank" rel="noopener"><span class="tag">REFERENCES</span><h3>Referencias</h3><p>Documentación externa y buenas prácticas.</p><span class="arrow">Abrir documento <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></a><a class="doc-card" href="https://github.com/wanderc137/superfoto-unoq/blob/main/docs/servicio.md" target="_blank" rel="noopener"><span class="tag">SERVICIO</span><h3>Operación sin sudo</h3><p>Start, stop, logs y arranque automático por cron.</p><span class="arrow">Abrir documento <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></a><a class="doc-card" href="https://github.com/wanderc137/superfoto-unoq/blob/main/docs/limites-y-alcance.md" target="_blank" rel="noopener"><span class="tag">ALCANCE</span><h3>Límites y alcance</h3><p>Qué puede y qué no puede hacer el pipeline.</p><span class="arrow">Abrir documento <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></a></div>
   </div>
 </section>
 
 <section class="cta">
   <div class="wrap">
     <div class="cta-card reveal">
-      <div class="kicker" style="justify-content:center">Portfolio · 21 proyectos</div>
+      <div class="kicker" style="justify-content:center">Portfolio · Arduino UNO Q</div>
       <h2>¿Construimos algo así?</h2>
       <p>Si te sirve o quieres construir algo parecido, el código está abierto.</p>
       <div class="hero-actions">
