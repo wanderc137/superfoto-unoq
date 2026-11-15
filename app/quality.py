@@ -126,18 +126,29 @@ class QualityGate:
 
     # ------------------------------------------------------------------
     def measure(self, frame: np.ndarray) -> dict:
-        """Metricas crudas del frame (sin decidir todavia)."""
+        """Metricas crudas del frame (sin decidir todavia).
+
+        La nitidez se mide a resolucion nativa para que el umbral sea
+        comparable entre frames. Exposicion y contraste se estiman sobre una
+        submuestra regular: recorrer los 2 MP completos costaba ~190 ms por
+        frame en la UNO Q y limitaba la captura a ~1 frame/s.
+        """
         gray = to_gray(frame)
         roi = center_roi(gray, self.roi_ratio)
         sharpness = laplacian_variance(roi)
 
-        # Recorte de altas luces: cualquier canal saturado.
-        if frame.ndim == 3:
-            clipped = float(np.count_nonzero(np.any(frame >= 250, axis=2))) / float(frame.shape[0] * frame.shape[1])
+        # Submuestra 1 de cada 4 pixeles por eje: conserva los valores por
+        # canal (un canal saturado sigue siendolo), a 1/16 del costo.
+        sample = frame[::4, ::4]
+        if sample.ndim == 3:
+            clipped = float(np.count_nonzero(np.any(sample >= 250, axis=2))) / float(
+                sample.shape[0] * sample.shape[1])
         else:
-            clipped = float(np.count_nonzero(frame >= 250)) / float(frame.size)
-        contrast = float(gray.std())
-        mean = float(gray.mean())
+            clipped = float(np.count_nonzero(sample >= 250)) / float(sample.size)
+        small = cv2.resize(gray, (max(8, gray.shape[1] // 4), max(8, gray.shape[0] // 4)),
+                           interpolation=cv2.INTER_AREA)
+        contrast = float(small.std())
+        mean = float(small.mean())
         return {
             "sharpness": sharpness,
             "clipped_ratio": clipped,

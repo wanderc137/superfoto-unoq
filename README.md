@@ -94,7 +94,7 @@ Cada frame se registra contra el primero aceptado:
 - **Etapa 1 — correlación de fase** (`cv2.phaseCorrelate`) sobre gris a 1/2 de
   resolución, con ventana de Hann para reducir artefactos de borde. Da una
   traslación subpíxel gruesa (error típico ~0.2 px).
-- **Etapa 2 — refinamiento ECC** sobre un recorte central de hasta 512 px a
+- **Etapa 2 — refinamiento ECC** sobre un recorte central de hasta 360 px a
   resolución nativa, inicializado con la traslación anterior. El error baja a
   ~0.04 px.
 
@@ -538,8 +538,8 @@ python3 scripts/captura_real.py --source 0 --width 1920 --height 1080 \
 | Nitidez mínima (percentil) | 60 | Umbral adaptativo de nitidez | Bajalo a 30–40 si se aceptan muy pocos frames; subilo si entra basura |
 | PSF óptica (σ) | 0.6 | Modelo de desenfoque para RL | 0.4–0.5 si la óptica es muy buena; 0.7–0.9 si está blanda |
 | Iteraciones RL | 15 | Deconvolución | 10–20; más de 25 amplifica ruido |
-| Duración | 10 s | Tiempo de captura | 300 s para una prueba real |
-| Frames objetivo | 80 | Corta al llegar a N aceptados | 0 = sin límite (usar con duración) |
+| Duración | 15 s | Tiempo de captura | Subila si querés más frames (20–30 s rinde mejor); 300 s para una prueba real |
+| Frames objetivo | 30 | Corta al llegar a N aceptados | 0 = sin límite (usar con duración); más de 40 rara vez mejora |
 
 ---
 

@@ -274,7 +274,7 @@ el 8000.
 | **Prometer "10K" o "microscopio"** | Físicamente imposible con la óptica del teléfono. Se reemplazó por 2× lineal medido. |
 | **Fusión online sola (drizzle puro)** | Quedaba por debajo del bicúbico en PSNR/SSIM; falta reinyección de altas frecuencias. |
 | **Alinear con phase correlation solamente** | Precisión típica ~0.2 px; insuficiente para 16 muestras por píxel. Se agregó refinamiento ECC. |
-| **ECC sobre el frame completo** | Caro y frágil; se hace sobre un recorte central de ≤512 px, inicializado con la fase. |
+| **ECC sobre el frame completo** | Caro y frágil; se hace sobre un recorte central de ≤360 px, inicializado con la fase. |
 | **Guardar todos los frames en RAM** | Con 1080p y cientos de frames no entra. Se usa acumulador online + buffer acotado para IBP. |
 | **Flask / FastAPI** | Dependencia innecesaria para una API de una sola sesión; la stdlib alcanza. |
 | **Montar el servicio con `sudo` / systemd del sistema** | La placa ya tiene un servicio ajeno (detector-tarjetas). Se prefirió despliegue de usuario y unidad systemd de ejemplo. |

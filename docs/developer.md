@@ -319,8 +319,8 @@ volvería auto-referencial y rechazaría cada vez más.
 ```python
 class SubpixelAligner:
     def __init__(self, ref_frame, scale=0.5, max_shift=32.0, min_corr=0.35,
-                 use_ecc=True, ecc_motion="translation", ecc_iters=40,
-                 ecc_eps=1e-4, ecc_max_side=512)
+                 use_ecc=True, ecc_motion="translation", ecc_iters=25,
+                 ecc_eps=1e-4, ecc_max_side=360)
     def align(self, frame) -> dict
     def apply_matrix(frame, matrix, out_shape) -> np.ndarray  # helper
 ```
@@ -332,7 +332,7 @@ Dos etapas:
    - `gray.std() < 4.0` (`low_texture`);
    - respuesta < `min(0.5, max(0.05, min_corr*0.5))`;
    - shift > `max_shift`.
-2. **ECC:** recorte central de hasta 512 px a resolución nativa, inicializado
+2. **ECC:** recorte central de hasta 360 px a resolución nativa, inicializado
    con la traslación de fase. `findTransformECC` con modo traslación. Si
    `cc < 0`, se queda con la fase.
 
@@ -362,7 +362,7 @@ Error típico: ~0.2 px con fase, ~0.04 px con ECC.
 ```python
 SuperResolver(ref_shape, scale, max_output_pixels=32_000_000,
               max_accumulator_bytes=700*1024*1024,
-              interp=cv2.INTER_LANCZOS4,
+              interp=cv2.INTER_LINEAR,
               max_store_frames=32, max_store_bytes=96*1024*1024,
               seed=12345)
 ```
@@ -371,6 +371,12 @@ Presupuesto: `_BYTES_PER_OUTPUT_PX = 18` (3 canales float32 = 12 B, peso
 float32 = 4 B, contador uint16 = 2 B). `_clamp_scale()` reduce la escala si no
 entra en `max_output_pixels` o `max_accumulator_bytes`; si aun a 1.0 no entra,
 lanza `ValueError`.
+
+`interp` es la interpolación de la reproyección por frame: `INTER_LINEAR` por
+defecto. Con `INTER_LANCZOS4` cada frame costaba ~1,7 s en la UNO Q (4,6 MP de
+salida) y la captura quedaba limitada a menos de 1 frame/s; con lineal baja a
+~0,4 s y entran 20–30 frames en una sesión normal. El refinamiento posterior
+(IBP + RL) recupera el detalle que la interpolación lineal no aporta.
 
 `add_frame(frame, matrix, weight)`:
 

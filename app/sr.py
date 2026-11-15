@@ -61,7 +61,7 @@ class SuperResolver:
         scale: float,
         max_output_pixels: int = 32_000_000,
         max_accumulator_bytes: int = 700 * 1024 * 1024,
-        interp: int = cv2.INTER_LANCZOS4,
+        interp: int = cv2.INTER_LINEAR,
         max_store_frames: int = 32,
         max_store_bytes: int = 96 * 1024 * 1024,
         seed: int = 12345,
@@ -151,8 +151,15 @@ class SuperResolver:
             borderValue=0,
         )
 
-        self.acc += warped.astype(np.float32) * w
-        self.wsum += mask.astype(np.float32) * w
+        # Sin temporales de 4.6 MP: cuando el peso es 1 se suma in place con
+        # casting directo (np.add convierte en el buffer de destino). Con pesos
+        # distintos hace falta el factor, pero es el caso minoritario.
+        if abs(w - 1.0) <= 1e-3:
+            np.add(self.acc, warped, out=self.acc, casting="unsafe")
+            np.add(self.wsum, mask, out=self.wsum, casting="unsafe")
+        else:
+            self.acc += warped.astype(np.float32) * w
+            self.wsum += mask.astype(np.float32) * w
         # Incremento saturado: al llegar a 65535 deja de contar (no desborda).
         inc = (mask > 0) & (self.count < _MAX_COUNT)
         np.add(self.count, inc.astype(np.uint16), out=self.count, casting="unsafe")

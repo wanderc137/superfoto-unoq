@@ -57,9 +57,9 @@ class SubpixelAligner:
         min_corr: float = 0.35,
         use_ecc: bool = True,
         ecc_motion: str = "translation",
-        ecc_iters: int = 40,
+        ecc_iters: int = 25,
         ecc_eps: float = 1e-4,
-        ecc_max_side: int = 512,
+        ecc_max_side: int = 360,
     ) -> None:
         if ref_frame is None or ref_frame.size == 0:
             raise ValueError("frame de referencia vacio")
@@ -148,7 +148,15 @@ class SubpixelAligner:
 
         # Sin textura no hay registro posible (camara tapada, pared lisa):
         # mejor rechazar que fusionar frames mal alineados.
-        texture = float(gray.std())
+        # Textura sobre una submuestra: std() a resolucion nativa costaba
+        # ~58 ms por frame (mas que la propia alineacion).
+        gh, gw = gray.shape[:2]
+        if max(gh, gw) > 256:
+            tex_img = cv2.resize(gray, (max(8, gw // 4), max(8, gh // 4)),
+                                 interpolation=cv2.INTER_AREA)
+        else:
+            tex_img = gray
+        texture = float(tex_img.std())
         if texture < 4.0:
             return {
                 "matrix": np.eye(2, 3),
