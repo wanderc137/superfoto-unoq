@@ -714,9 +714,10 @@ list` no muestra la placa:
 8. **Cobertura.** Revisá `coverage.png` y `coverage_16` en el JSON. Una
    cobertura 16× baja significa que faltan muestras subpíxel: capturá más
    frames o verificá que haya micro-movimiento natural.
-9. **Compará siempre 1:1.** El zoom de la UI no agrega información. La
-   comparativa válida es `compare.jpg` (mismo recorte, mismo tamaño) contra el
-   frame original.
+9. **Mirá el recorte correcto.** `compare.jpg` elige solo la zona con más
+   detalle y la amplía 2x; el rótulo derecho informa la ganancia medida
+   (`detalle +X%`). Si la fuente salió desenfocada, la app lo avisa y ningún
+   algoritmo puede recuperar detalle que la óptica no capturó.
 
 ---
 
@@ -727,6 +728,8 @@ list` no muestra la placa:
 | "No se detectó ninguna cámara UVC real" | La UNO Q solo tiene decodificadores Venus en `/dev/video*` | Usá IP Webcam o una UVC por USB; no insistas con `/dev/video0` |
 | La cámara IP no aparece | Teléfono en otra red, puerto distinto o firewall | Mismo WiFi, `http://<IP_DEL_TELEFONO>:8080`, probá `/status.json` en el navegador |
 | Aviso "La escena se mueve demasiado" | Más de la mitad de los frames no alinean | Fijá cámara y objeto; capturá solo el segmento estable; acortá la sesión |
+| "La captura salio desenfocada (nitidez X de 45)" | La óptica no capturó detalle; la fusión no puede inventarlo | Enfocá (tap para enfocar en IP Webcam), acercá el sujeto y repetí |
+| `compare.jpg` sin diferencias visibles | Sesión capturada con la fuente fuera de foco o sin micro-movimiento | Revisá `reference_sharpness` en `session.json`; si es < 45, enfocá y repetí |
 | Muy pocos frames aceptados | Poca luz, desenfoque o umbral alto | Iluminá mejor, enfocá, bajá el percentil a 30–40 |
 | El resultado se ve igual al original | Escala 1.0, pocos frames o escena sin diversidad | Usá escala 1.5–2.0, capturá más frames, verificá el shift medio |
 | El resultado tiene halos o ruido | RL demasiado agresivo | Bajá iteraciones RL o subí `psf_sigma` |

@@ -23,7 +23,7 @@ import numpy as np
 
 from .align import SubpixelAligner
 from .config import Config
-from .quality import QualityGate
+from .quality import QualityGate, laplacian_variance
 from .source import FrameSource, SourceError, create_source
 from .sr import SuperResolver, psnr, ssim
 from .storage import Storage
@@ -45,6 +45,29 @@ SCENE_MOTION_ADVICE = (
     "La escena se mueve demasiado: fija la camara y el objeto, "
     "y volve a capturar el segmento estable"
 )
+
+# Nitidez del frame de referencia por debajo de la cual la fuente esta
+# desenfocada. Es la varianza del Laplaciano a resolucion de captura: una foto
+# enfocada de 1080p supera ampliamente 100; una fuera de foco queda en 5-30.
+# La superresolucion no inventa detalle que la optica no capturo, asi que el
+# aviso es honesto y evita que el usuario crea que el algoritmo no funciona.
+SOFT_SOURCE_SHARPNESS = 45.0
+
+# Recorte del comparativo: 480x360 px de la superfoto, ampliados 2x para que
+# las diferencias de nitidez se distingan en la pantalla de un telefono.
+COMPARE_CROP_W = 480
+COMPARE_CROP_H = 360
+COMPARE_ZOOM = 2
+COMPARE_GAP = 8
+
+
+def _soft_source_advice(sharpness: float) -> str:
+    return (
+        f"La captura salio desenfocada (nitidez {sharpness:.0f} de "
+        f"{SOFT_SOURCE_SHARPNESS:.0f}): la superresolucion no recupera detalle "
+        "que la optica no capturo. Enfoca la camara y repeti"
+    )
+
 
 
 def _sanitize_source_meta(meta: dict | None) -> dict:
@@ -95,32 +118,92 @@ def _make_thumb(image: np.ndarray, max_side: int = 320) -> np.ndarray:
                       interpolation=cv2.INTER_AREA)
 
 
-def _make_compare(reference: np.ndarray, result: np.ndarray, crop_max: int = 640) -> np.ndarray:
-    """Recorte 1:1 lado a lado: bicubico del frame de referencia vs superfoto."""
-    rh, rw = result.shape[:2]
-    if rh < 16 or rw < 16:
+def _structural_sharpness(panel: np.ndarray) -> float:
+    """Potencia de borde en la cola alta (percentil 99 del gradiente).
+
+    La varianza del Laplaciano se infla con el grano del postproceso: en la
+    sesion real daba 9x "mas nitidez" donde no habia ninguna mejora visible.
+    El percentil 99 mide solo los bordes fuertes, que el ruido uniforme no
+    alcanza, y sigue siendo sensible a la ganancia real de detalle.
+    """
+    gray = cv2.cvtColor(panel, cv2.COLOR_BGR2GRAY)
+    gray = cv2.GaussianBlur(gray, (0, 0), 1.5)
+    gx = cv2.Sobel(gray, cv2.CV_32F, 1, 0, ksize=3)
+    gy = cv2.Sobel(gray, cv2.CV_32F, 0, 1, ksize=3)
+    return float(np.percentile(cv2.magnitude(gx, gy), 99))
+
+
+def _detail_crop_origin(image: np.ndarray, cw: int, ch: int) -> tuple[int, int]:
+    """Esquina (x, y) de la ventana cw x ch con mas detalle de la imagen.
+
+    El centro de una foto suele ser una zona lisa (fondo, cielo, aire): un
+    recorte ahi no muestra ninguna diferencia. Se elige la ventana con mayor
+    energia de gradiente (Sobel) con una imagen integral, costo O(pixeles).
+    """
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    # Un suavizado leve evita que el ruido de pixel gane la seleccion.
+    gray = cv2.GaussianBlur(gray, (0, 0), 1.2)
+    gx = cv2.Sobel(gray, cv2.CV_32F, 1, 0, ksize=3)
+    gy = cv2.Sobel(gray, cv2.CV_32F, 0, 1, ksize=3)
+    energy = gx * gx + gy * gy
+    integ = cv2.integral(energy, sdepth=cv2.CV_64F)
+    sums = integ[ch:, cw:] - integ[:-ch, cw:] - integ[ch:, :-cw] + integ[:-ch, :-cw]
+    _, _, _, loc = cv2.minMaxLoc(sums)
+    return int(loc[0]), int(loc[1])
+
+
+def _make_compare(reference: np.ndarray, result: np.ndarray, frames: int = 0) -> np.ndarray:
+    """Recorte 1:1 ampliado 2x: bicubico del frame de referencia vs superfoto.
+
+    Se recorta la zona con mas detalle (no el centro) y se rotula la nitidez
+    medida de cada panel: el comparativo tiene que mostrar *donde* y *cuanto*
+    se gano, no solo dos imagenes parecidas de una zona vacia.
+    """
+    if result is None or result.size == 0:
         return np.empty((0, 0, 3), np.uint8)
-    ch = min(crop_max, rh)
-    cw = min(crop_max // 2, rw // 2)
-    y0 = max(0, (rh - ch) // 2)
-    x0 = max(0, (rw - cw) // 2)
+    rh, rw = result.shape[:2]
+    if rh < 16 or rw < 16 or reference is None or reference.size <= 4:
+        return np.empty((0, 0, 3), np.uint8)
+
+    cw = min(COMPARE_CROP_W, rw)
+    ch = min(COMPARE_CROP_H, rh)
+    x0, y0 = _detail_crop_origin(result, cw, ch)
     crop = result[y0:y0 + ch, x0:x0 + cw]
 
     up = cv2.resize(reference, (rw, rh), interpolation=cv2.INTER_CUBIC)[y0:y0 + ch, x0:x0 + cw]
     if up.shape[:2] != crop.shape[:2]:
-        crop = cv2.resize(crop, (up.shape[1], up.shape[0]))
+        up = cv2.resize(up, (cw, ch), interpolation=cv2.INTER_CUBIC)
 
-    gap = np.full((ch, 6, 3), 255, np.uint8)
-    canvas = np.hstack([up, gap, crop])
-    label_h = max(18, ch // 20)
-    cv2.rectangle(canvas, (0, 0), (canvas.shape[1], label_h), (30, 30, 30), -1)
+    # Detalle estructural a 1:1 (la metrica no debe depender del zoom de
+    # presentacion, ni contar el grano del postproceso).
+    sharp_base = _structural_sharpness(up)
+    sharp_res = _structural_sharpness(crop)
+    gain = (sharp_res / sharp_base - 1.0) * 100.0 if sharp_base > 1e-6 else 0.0
+
+    zoom = max(1, int(COMPARE_ZOOM))
+    if zoom > 1:
+        size = (cw * zoom, ch * zoom)
+        up = cv2.resize(up, size, interpolation=cv2.INTER_NEAREST)
+        crop = cv2.resize(crop, size, interpolation=cv2.INTER_NEAREST)
+
+    ph, pw = crop.shape[:2]
+    label_h = max(24, ch // 14)
+    canvas = np.full((label_h + ph, pw * 2 + COMPARE_GAP, 3), 30, np.uint8)
+    canvas[label_h:, :pw] = up
+    canvas[label_h:, pw:pw + COMPARE_GAP] = 255
+    canvas[label_h:, pw + COMPARE_GAP:] = crop
+
     font = cv2.FONT_HERSHEY_SIMPLEX
-    fs = max(0.4, label_h / 40.0)
+    fs = max(0.45, label_h / 34.0)
+    thickness = 1
+    left = "BICUBICO 1 frame"
+    right = f"SUPERFOTO {frames} frames | detalle {gain:+.0f}%" if frames else \
+        f"SUPERFOTO fusion | detalle {gain:+.0f}%"
     # Sin acentos: cv2.putText no maneja UTF-8 (leccion P-09).
-    cv2.putText(canvas, "BICUBICO 1 frame", (8, int(label_h * 0.75)), font, fs, (255, 255, 255), 1,
+    cv2.putText(canvas, left, (8, int(label_h * 0.72)), font, fs, (255, 255, 255), thickness,
                 cv2.LINE_AA)
-    cv2.putText(canvas, "SUPERFOTO fusion", (cw + 14, int(label_h * 0.75)), font, fs, (255, 255, 255), 1,
-                cv2.LINE_AA)
+    cv2.putText(canvas, right, (pw + COMPARE_GAP + 8, int(label_h * 0.72)), font, fs,
+                (255, 255, 255), thickness, cv2.LINE_AA)
     return canvas
 
 
@@ -565,7 +648,18 @@ class SuperFotoSession:
         if reference is None:
             reference = np.zeros((1, 1, 3), np.uint8)
         thumb = _make_thumb(image)
-        compare = _make_compare(reference, image)
+        compare = _make_compare(reference, image, frames=self.accepted)
+
+        # Fuente desenfocada: la fusion no puede inventar detalle. Se avisa sin
+        # bloquear la entrega, y solo si no hay ya un aviso mas grave.
+        ref_sharpness = 0.0
+        if reference.size > 4:
+            ref_sharpness = laplacian_variance(cv2.cvtColor(reference, cv2.COLOR_BGR2GRAY))
+        if ref_sharpness and ref_sharpness < SOFT_SOURCE_SHARPNESS and not self.scene_moving:
+            advice = _soft_source_advice(ref_sharpness)
+            with self._lock:
+                self.advice = advice
+            log.warning("Sesion %s: %s (nitidez %.1f)", self.session_id, advice, ref_sharpness)
 
         metrics: dict[str, Any] = {
             "frames_seen": self.seen,
@@ -574,6 +668,7 @@ class SuperFotoSession:
             "quality_rejected": self.quality_rejected,
             "align_invalid": self.align_invalid,
             "scene_moving": self.scene_moving,
+            "reference_sharpness": round(ref_sharpness, 1),
             "elapsed_seconds": round(self.elapsed, 2),
             "process_seconds": round(process_s, 2),
             "effective_scale": round(resolver.effective_scale, 3),
@@ -658,6 +753,11 @@ class SuperFotoSession:
         message = "Superfoto lista"
         if self.scene_moving:
             message = f"{SCENE_MOTION_ADVICE}. Se fusionaron {self.accepted} frames."
+        elif self.advice:
+            message = (
+                f"Superfoto lista con {self.accepted} frames, pero la fuente salio "
+                "desenfocada: revisa el aviso antes de repetir"
+            )
         elif self.accepted < 8:
             if self.rejected == 0 and self.accepted == self.seen:
                 # Todos los frames vistos se fusionaron: el limite fue el tiempo

@@ -20,6 +20,7 @@
     lastState: null,
     seenSession: null,
     sceneWarned: false,
+    adviceWarned: "",
   };
 
   // ---------------------------------------------------------------- utils
@@ -270,19 +271,23 @@
     $("statCoverage").textContent = s.coverage && s.coverage.coverage_4 != null
       ? Math.round(s.coverage.coverage_4 * 100) + "%" : "—";
 
-    if (s.error) $("actionMsg").textContent = s.error;
-
-    if (s.scene_moving && s.advice) {
+    if (s.error) {
+      $("actionMsg").textContent = s.error;
+      $("actionMsg").className = "small warn";
+    } else if (s.advice) {
+      // El aviso puede ser de escena en movimiento o de fuente desenfocada.
       $("actionMsg").textContent = s.advice;
       $("actionMsg").className = "small warn";
-      if (!state.sceneWarned) {
-        state.sceneWarned = true;
+      if (state.adviceWarned !== s.advice) {
+        state.adviceWarned = s.advice;
         log("AVISO: " + s.advice);
       }
     } else if ($("actionMsg").classList.contains("warn")) {
       $("actionMsg").className = "small";
+      state.adviceWarned = "";
     }
-    if (s.status === "capturing" && !s.scene_moving) state.sceneWarned = false;
+    if (s.status === "capturing" && !s.advice) state.adviceWarned = "";
+    if (s.status === "idle" || s.status === "starting") state.adviceWarned = "";
 
     if (s.status === "processing" && state.lastState !== "processing") {
       log("Postproceso en curso (IBP + deconvolucion). Puede tardar.");

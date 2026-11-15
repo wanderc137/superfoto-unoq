@@ -320,7 +320,7 @@ Indicadores de progreso:
 |---|---|
 | `superfoto.png` | Resultado sin pérdida, 8-bit |
 | `superfoto.jpg` | Resultado en JPEG q95 |
-| `compare.jpg` | Comparativa 1:1: bicúbico de 1 frame vs fusión |
+| `compare.jpg` | Comparativa de la zona con más detalle, ampliada 2x: bicúbico de 1 frame vs fusión, con la ganancia de detalle medida en el rótulo |
 | `reference.jpg` | Frame de referencia (el primero aceptado) |
 | `coverage.png` | Mapa de cobertura subpíxel |
 | `thumb.jpg` | Miniatura de 320 px |

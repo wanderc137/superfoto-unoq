@@ -466,15 +466,32 @@ En ese caso fusiona solo el segmento estable y agrega un `advice` visible.
 Artefactos:
 
 - `_make_thumb(max_side=320)`: miniatura con `INTER_AREA`.
-- `_make_compare(reference, result, crop_max=640)`: recorte central 1:1 del
-  resultado contra la referencia ampliada con bicúbico, separador blanco de
-  6 px y etiquetas `BICUBICO 1 frame` / `SUPERFOTO fusion`. **Sin acentos**:
-  `cv2.putText` no maneja UTF-8.
+- `_make_compare(reference, result, frames=0)`: recorte de 480x360 tomado de
+  la zona con MÁS detalle de la imagen (no del centro), ampliado 2x con
+  `INTER_NEAREST` en ambos paneles, separador blanco de 8 px y rótulos
+  `BICUBICO 1 frame` / `SUPERFOTO N frames | detalle +X%`. Si el resultado
+  mide menos de 16 px o la referencia está vacía devuelve un array vacío.
+  **Sin acentos**: `cv2.putText` no maneja UTF-8.
+- `_detail_crop_origin(image, cw, ch)`: elige la ventana `cw x ch` con mayor
+  energía de gradiente (Sobel sobre una Gaussiana σ=1.2, sumada con
+  `cv2.integral`). Evita recortar una zona lisa donde nada se ve.
+- `_structural_sharpness(panel)`: percentil 99 de la magnitud del gradiente
+  tras suavizar σ=1.5. Es la métrica que se muestra en el rótulo: la varianza
+  del Laplaciano se infla con el grano del postproceso y llegó a mentir 9x
+  sobre una pareja visualmente idéntica.
+- `_soft_source_advice(sharpness)`: aviso cuando la referencia tiene
+  `laplacian_variance < SOFT_SOURCE_SHARPNESS` (45). Una fuente desenfocada no
+  tiene detalle que la superresolución pueda recuperar; el aviso lo dice en la
+  UI y en `advice`. La nitidez medida queda en `metrics.reference_sharpness`.
 
-Mensajes de cierre:
+Mensajes de cierre (en orden de prioridad):
 
 - `"La escena se mueve demasiado..."` si hay aviso de movimiento.
-- `"Pocos frames utiles (N de M)..."` si se aceptaron menos de 8.
+- `"Superfoto lista con N frames, pero la fuente salio desenfocada: revisa el
+  aviso antes de repetir"` si `advice` es el aviso de fuente blanda.
+- `"Pocos frames utiles (N de M)..."` si se aceptaron menos de 8 y hubo
+  rechazos; `"Superfoto lista con N frames (captura corta)..."` si se
+  aceptaron todos.
 - `"Superfoto lista con N frames; X se descartaron..."` si
   `align_invalid > 3 * accepted`.
 - `"Superfoto lista"` en el caso normal.
