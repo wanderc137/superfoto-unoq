@@ -292,6 +292,7 @@ footer{position:relative;z-index:1;border-top:1px solid rgba(255,255,255,.08);pa
 
 </style>
 <link rel="stylesheet" href="assets/community.css?v=5">
+<link href="rec/player.css?v=1" rel="stylesheet"/>
 </head>
 <body style="--accent:#00D8C0;--accent2:#2E7DFF">
 <div class="grid-overlay"></div>
@@ -307,6 +308,7 @@ footer{position:relative;z-index:1;border-top:1px solid rgba(255,255,255,.08);pa
 <a href="#problema">Visión</a>
 <a href="#como">Cómo funciona</a>
 <a href="#arquitectura">Arquitectura</a>
+<a href="#video">Video</a>
 <a href="#docs">Documentación</a>
 <a class="btn btn-ghost" href="https://github.com/wanderc137/superfoto-unoq" rel="noopener" style="padding:9px 15px" target="_blank">GitHub</a>
 </nav>
@@ -356,6 +358,45 @@ footer{position:relative;z-index:1;border-top:1px solid rgba(255,255,255,.08);pa
 <div class="timeline reveal"><div class="step"><div class="step-num">01</div><div class="step-body"><h3>Captura</h3><p>Recibe frames de IP Webcam (MJPEG), archivo de video, webcam USB o carpeta de imágenes. En la UNO Q, el descubrimiento por sysfs descarta los decoders Venus (/dev/video0/video1) que no son cámaras.</p></div></div><div class="step"><div class="step-num">02</div><div class="step-body"><h3>Gate de calidad (lucky imaging)</h3><p>Varianza del Laplaciano sobre el ROI central (50%): un umbral adaptativo por percentil descarta los frames borrosos y se queda solo con los nítidos.</p></div></div><div class="step"><div class="step-num">03</div><div class="step-body"><h3>Alineación subpíxel</h3><p>phaseCorrelate para el desplazamiento grueso + refinamiento ECC hasta un error medio de ~0.04 px. Sin alinear, la fusión emborrona en lugar de mejorar.</p></div></div><div class="step"><div class="step-num">04</div><div class="step-body"><h3>Fusión drizzle</h3><p>Acumulación en una rejilla fina con kernel Lanczos4 y pesos por nitidez + exposición. Trabaja en uint16 para no saturar la suma de señal.</p></div></div><div class="step"><div class="step-num">05</div><div class="step-body"><h3>Refinamiento IBP</h3><p>Iterative back-projection: proyecta el resultado a la resolución original, compara con cada frame y corrige el error de forma iterativa.</p></div></div><div class="step"><div class="step-num">06</div><div class="step-body"><h3>Deconvolución Richardson-Lucy</h3><p>Desconvoluciona con una PSF gaussiana (σ=0.6, 15 iteraciones) solo sobre la luminancia en espacio Lab, para no alterar el color.</p></div></div></div>
 </div>
 </section>
+
+<section class="section tight rec-section" id="video" style="--accent:#2E7DFF;--accent2:#14F195">
+<div class="wrap">
+<div class="rec-kicker">REC · VIDEO · 3:04</div>
+<h2 class="rec-h2">SuperFoto · más resolución sin inventar píxeles</h2>
+<p class="rec-lead">Recorrido por el pipeline real de SuperFoto: captura con control de calidad, alineación por fase y ECC, acumulación en grilla de alta resolución, refinamiento por retroproyección, deconvolución Richardson-Lucy y persistencia atómica de la sesión.</p>
+<div class="rec-banner">
+<span class="rec-banner-icon">📋</span>
+<strong>Puedes copiar y pegar los comandos del video desde el video !!!</strong>
+<span>Pausá, seleccioná el texto de la terminal y copiá.</span>
+</div>
+<div class="rec-shell">
+<div class="rec-bar"><i></i><i></i><i></i><span class="rec-title">SuperFoto · más resolución sin inventar píxeles · asciinema</span><span class="rec-rec"><b></b>REC</span></div>
+<div class="rec-screen-wrap">
+<div class="rec-screen" id="rec-screen"></div>
+<div class="rec-poster" id="rec-poster">
+<div class="rec-kicker">ASCIINEMA · 3:04</div>
+<h3>SuperFoto · más resolución sin inventar píxeles</h3>
+<p>Recorrido por el pipeline real de SuperFoto: captura con control de calidad, alineación por fase y ECC, acumulación en grilla de alta resolución, refinamiento por retroproyección, deconvolución Richardson-Lucy y persistencia atómica de la sesión.</p>
+<div class="rec-poster-meta">superfoto-unoq · código real</div>
+<button class="rec-btn rec-primary" id="rec-start" type="button">▶ Reproducir</button>
+</div>
+</div>
+<div class="rec-controls">
+<button class="rec-btn rec-primary" id="rec-play" type="button">▶ Reproducir</button>
+<button class="rec-btn" id="rec-restart" type="button">↺ Reiniciar</button>
+<input class="rec-progress" id="rec-range" type="range" min="0" max="1000" value="0" aria-label="Progreso"/>
+<span class="rec-time" id="rec-time">0:00 / 3:04</span>
+<select class="rec-speed" id="rec-speed" aria-label="Velocidad"><option value="1">1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2×</option></select>
+<button class="rec-btn" id="rec-full" type="button" title="Pantalla completa">⛶</button>
+<button class="rec-btn" id="rec-copy" type="button">⧉ Copiar comandos</button>
+<a class="rec-download" href="rec/superfoto-unoq.cast" download>descargar .cast</a>
+</div>
+</div>
+<p class="rec-note">Video generado a partir del código real del repositorio. Los fragmentos corresponden a los archivos y líneas indicados. Las cifras de frames aceptados provienen de las pruebas documentadas en el README; no se muestran datos personales ni credenciales.</p>
+<div class="rec-chapters"><span class="rec-chip"><b>0:06</b> EL PROBLEMA</span><span class="rec-chip"><b>0:23</b> EL FLUJO</span><span class="rec-chip"><b>0:39</b> LUCKY IMAGING</span><span class="rec-chip"><b>0:56</b> ALINEACIÓN</span><span class="rec-chip"><b>1:12</b> EL NÚCLEO</span><span class="rec-chip"><b>1:30</b> REFINAMIENTO</span><span class="rec-chip"><b>1:46</b> DECONVOLUCIÓN</span><span class="rec-chip"><b>2:01</b> ACABADO</span><span class="rec-chip"><b>2:15</b> PERSISTENCIA</span><span class="rec-chip"><b>2:28</b> LA INTERFAZ</span><span class="rec-chip"><b>2:42</b> CÓMO EJECUTARLO</span></div>
+</div>
+</section>
+
 <section class="section tight" id="arquitectura">
 <div class="wrap">
 <div class="section-head reveal">
@@ -482,5 +523,7 @@ footer{position:relative;z-index:1;border-top:1px solid rgba(255,255,255,.08);pa
 </script>
 <script>window.PORTFOLIO_COMMUNITY = {"account": "wanderc137", "repo": "superfoto-unoq", "coinNamespace": "wanderc137-superfoto-unoq-coins-v1", "faqs": [{"q": "¿Qué hace SuperFoto?", "a": "Combina miles de fotogramas para reducir ruido y mejorar la nitidez de una escena fija."}, {"q": "¿Qué hardware necesita?", "a": "Una Arduino UNO Q con cámara; el procesamiento ocurre localmente."}, {"q": "¿Dónde están las instrucciones?", "a": "En el README y la documentación del repositorio."}]};</script>
 <script src="assets/community.js?v=6" defer></script>
+<script defer src="rec/superfoto-unoq.cast.js?v=1"></script>
+<script defer src="rec/player.js?v=1"></script>
 </body>
 </html>
